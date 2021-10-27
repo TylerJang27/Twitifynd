@@ -11,19 +11,44 @@ In order to run this script, first run:
 import os
 from sys import exit
 from dotenv import dotenv_values
+import requests
+import time
 
-config = dotenv_values(".env")
-if len(config) == 0:
-    print("Please create your .env file")
-    exit()
+TWITTER_FOLLOWERS_URL = "https://api.twitter.com/2/users/{:}/followers"
 
-if not 'TWITTER_BEARER' in config:
-    print("Please add your TWITTER_BEARER token to your .env file")
-    exit()
-        
-TWITTER_BEARER = config['TWITTER_BEARER']
+def get_bearer():
+    config = dotenv_values(".env")
+    if len(config) == 0:
+        print("Please create your .env file")
+        exit()
+    
+    if not 'TWITTER_BEARER' in config:
+        print("Please add your TWITTER_BEARER token to your .env file")
+        exit()
+            
+    twitter_bearer = config['TWITTER_BEARER']
+    
+    if twitter_bearer == "default_secret":
+        print("Please add your TWITTER_BEARER token to your .env file")
+        exit()
+    return twitter_bearer
 
-if TWITTER_BEARER == "default_secret":
-    print("Please add your TWITTER_BEARER token to your .env file")
-    exit()
 
+
+def request_to_api(url, bearer):
+    headers = {"Authorization": "Bearer {:}".format(bearer)}
+    response = requests.get(url, headers=headers)
+    if response.status_code == 200:
+        return response.json()
+    else:
+        print("ERROR: STATUS CODE: {:}".format(response.status_code))
+
+def request_followers(user_id, bearer):
+    return request_to_api(TWITTER_FOLLOWERS_URL.format(user_id), bearer)
+
+
+if __name__ == "__main__":
+    twitter_bearer = get_bearer()
+    quinn_followers = request_followers(714845064, twitter_bearer)
+    print(quinn_followers)
+    
