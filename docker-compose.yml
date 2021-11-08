@@ -1,0 +1,23 @@
+version: "3.9"
+services:
+  db:
+    image: postgres
+    restart: always
+    environment:
+      POSTGRES_DB: twitifynd
+      POSTGRES_PASSWORD: twitter
+    ports:
+      - 5432:5432
+  twitifynd:
+    build: .
+    environment:
+      POSTGRES_DB: twitifynd
+      POSTGRES_USER: postgres
+      PGPASSWORD: twitter
+    volumes:
+      - script_logs:/data/script_logs
+      - script_data:/data/script_data
+      # TODO: specify restart on crash
+volumes:
+  script_logs: {}
+  script_data: {}
