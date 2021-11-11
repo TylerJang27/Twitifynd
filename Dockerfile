@@ -8,6 +8,6 @@ COPY requirements.txt requirements.txt
 RUN pip install -r requirements.txt
 
 WORKDIR /code
-COPY . /code
+COPY . /code/
 
 ENTRYPOINT ["bash","./init.sh"]

@@ -8,6 +8,11 @@ services:
       POSTGRES_PASSWORD: twitter
     ports:
       - 5432:5432
+  mail:
+    image: bytemark/smtp
+    restart: always
+    ports:
+      - 25:25
   twitifynd:
     build: .
     environment:
@@ -17,6 +22,9 @@ services:
       SPOTIFY_ID: ${SPOTIFY_ID}
       SPOTIFY_SECRET: ${SPOTIFY_SECRET}
       TWITTER_BEARER: ${TWITTER_BEARER}
+      RECEIVER_EMAIL: ${RECEIVER_EMAIL}
+      ALERT_LEVEL: 2
+      # ALERT_LEVEL: 1-minimal, warnings only; 2-startup and other events; 3-verbose
     volumes:
       - script_logs:/data/script_logs
       - script_data:/data/script_data

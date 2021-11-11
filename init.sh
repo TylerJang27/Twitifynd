@@ -2,11 +2,16 @@
 
 sleep 4
 echo "***Beginning setup of postgresql***"
-# TODO: PERFORM PERSISTENT LOGGING
 /bin/bash db/create.sh
 
 sleep 1
 echo "***Beginning analyzing artists***"
+
+# If alert level is at least 3, log a startup message
+if [ $ALERT_LEVEL -ge 2 ]; then
+    python3 utils/utils.py
+fi
+
 
 #       vvv ALL BELOW COULD BE CALLED HIERARCHICALLY IN PYTHON vvv
 # TODO: DETECT LAST INPUT OF ARTIST STREAM (Python)
@@ -18,4 +23,3 @@ echo "***Beginning analyzing artists***"
 # TODO: BACKUP/LOG/PERSIST DATABASE
 
 
-ls /data
