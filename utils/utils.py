@@ -3,6 +3,7 @@ import logging
 from logging import config
 import os
 from os import path
+import sys
 import ntpath
 import smtplib
 import email
@@ -113,9 +114,15 @@ class EmailWrapper:
             server.sendmail(sender_email, receiver_email, text)
 
 if __name__ == "__main__":
+
     logger = LoggerWrapper()
     # logger.manager_info("Default run of utils")
-    logger.email_warn("Twitifynd starting up")
+    artist_result_line = sys.argv[1] if len(sys.argv) > 1 else "Missing"
+    artist_id = sys.argv[1] if len(sys.argv) > 1 else "Missing"
+    missing_song_attributes = sys.argv[1] if len(sys.argv) > 1 else "Missing"
+    twitter_user_queue = sys.argv[1] if len(sys.argv) > 1 else "Missing"
+    body = "Twitifynd starting up.\nArtist Result Line: {:}\nArtist ID: {:}\nMissing Song Attributes: {:}\nTwitter User Queue: {:}".format(artist_result_line, artist_id, missing_song_attributes, twitter_user_queue)
+    logger.email_warn(body)
 
     # filename = path.join(path.dirname(path.abspath(__file__)), "logging.conf")
     # EmailWrapper.sendEmail("Test Email", attachment=filename)

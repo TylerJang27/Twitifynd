@@ -28,7 +28,9 @@ services:
     volumes:
       - script_logs:/data/script_logs
       - script_data:/data/script_data
+      - script_counters:/data/script_counters
       # TODO: specify restart on crash
 volumes:
   script_logs: {}
   script_data: {}
+  script_counters: {}
