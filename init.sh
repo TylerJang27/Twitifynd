@@ -7,6 +7,8 @@ echo "***Beginning setup of postgresql***"
 
 sleep 1
 echo "***Beginning analyzing artists***"
+
+#       vvv ALL BELOW COULD BE CALLED HIERARCHICALLY IN PYTHON vvv
 # TODO: DETECT LAST INPUT OF ARTIST STREAM (Python)
 # TODO: QUERY SPOTIFY FOR ARTIST INFO (Python)          time boxed
 # TODO: QUERY SPOTIFY FOR TWITTER HANDLE (Python)       time boxed

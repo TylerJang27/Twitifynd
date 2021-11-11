@@ -1,11 +1,12 @@
 CREATE TABLE testtable (id INT);
+/* DO WE WANT OTHER NON-ARTIST TWITTER USERS? */
 CREATE TABLE artist (
     id int NOT NULL PRIMARY KEY,
     artist_name varchar(32),
     twitter_id int NOT NULL,
-    twitter_name varchar(25) NOT NULL,
-    spotify_id int NOT NULL,
-    spotify_name varchar(25) NOT NULL,
+    twitter_name varchar(25) NOT NULL, /* MAYBE EXTRACT INTO TWITTER_ARTIST */
+    spotify_id varchar(25) NOT NULL,
+    spotify_name varchar(25) NOT NULL, /* MAYBE EXTRACT INTO SPOTIFY_ARTIST */
 );
 CREATE TABLE twitter_artist(
     twitter_id int NOT NULL PRIMARY KEY,
