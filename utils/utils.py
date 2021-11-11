@@ -15,6 +15,11 @@ from email.mime.text import MIMEText
 LOG_PATH = '/data/script_logs/'
 SENDER_EMAIL = 'twitifynd@example.com'
 MAIL_SERVER_HOSTNAME = 'mail'
+ARTIST_RESULT_FILE = "/data/script_counters/artist_result.txt"
+ARTIST_ID_FILE = "/data/script_counters/artist_id.txt"
+MISSING_SONG_ATTRIBUTES_FILE = "/data/script_counters/missing_song_attributes.txt"
+TWITTER_USER_QUEUE_FILE = "/data/script_counters/twitter_user_queue.txt"
+
 
 class Config(object):
     TWITTER_BEARER = os.environ.get('TWITTER_BEARER')
@@ -26,6 +31,7 @@ class Config(object):
                 os.environ.get('POSTGRES_DB'))
     RECEIVER_EMAIL = os.environ.get('RECEIVER_EMAIL')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    ALERT_LEVEL = os.environ.get('ALERT_LEVEL')
 
 
 class LoggerWrapper:
@@ -113,16 +119,32 @@ class EmailWrapper:
         with smtplib.SMTP(smtp_server, 25) as server:
             server.sendmail(sender_email, receiver_email, text)
 
+
+class FileWrapper():
+    @staticmethod
+    def writeValToFile(filepath, contents):
+        f = open(filepath, "w")
+        f.write(contents)
+        f.close()
+
+    @staticmethod
+    def readFromFile(filepath):
+        f = open(filepath, "r")
+        return f.read()
+
+
 if __name__ == "__main__":
 
     logger = LoggerWrapper()
     # logger.manager_info("Default run of utils")
     artist_result_line = sys.argv[1] if len(sys.argv) > 1 else "Missing"
-    artist_id = sys.argv[1] if len(sys.argv) > 1 else "Missing"
-    missing_song_attributes = sys.argv[1] if len(sys.argv) > 1 else "Missing"
-    twitter_user_queue = sys.argv[1] if len(sys.argv) > 1 else "Missing"
+    artist_id = sys.argv[2] if len(sys.argv) > 2 else "Missing"
+    missing_song_attributes = sys.argv[3] if len(sys.argv) > 3 else "Missing"
+    twitter_user_queue = sys.argv[4] if len(sys.argv) > 4 else "Missing"
     body = "Twitifynd starting up.\nArtist Result Line: {:}\nArtist ID: {:}\nMissing Song Attributes: {:}\nTwitter User Queue: {:}".format(artist_result_line, artist_id, missing_song_attributes, twitter_user_queue)
     logger.email_warn(body)
+
+    # FileWrapper.writeValToFile(ARTIST_RESULT_FILE, "-1")
 
     # filename = path.join(path.dirname(path.abspath(__file__)), "logging.conf")
     # EmailWrapper.sendEmail("Test Email", attachment=filename)
