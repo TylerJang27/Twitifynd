@@ -8,6 +8,8 @@ services:
       POSTGRES_PASSWORD: twitter
     ports:
       - 5432:5432
+    volumes:
+      - script_data:/data/script_data
   mail:
     image: bytemark/smtp
     restart: always

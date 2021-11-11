@@ -3,6 +3,7 @@
 sleep 4
 echo "***Beginning setup of postgresql***"
 /bin/bash db/create.sh
+# TODO: LOAD IN ANY PREVIOUS DATA AS APPLICABLE
 
 sleep 1
 echo "***Beginning analyzing artists***"
@@ -77,6 +78,8 @@ fi
 
 
 # TODO: ON A CRONJOB EVERY (1?) HOURS, OUTPUT ALL THE TABLES TO CSVS AND EMAIL THEM
+# /bin/bash db/export.sh # TODO: REPLACE WITH CLIENT-SIDE RATHER THAN SERVER SIDE COPY FUNCTION
+
 
 # TODO: DEFINE A VIEW FOR THE ARTISTS THAT HAVE NON-NULL SPOTIFY AND TWITTER INFO
 

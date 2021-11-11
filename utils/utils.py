@@ -13,6 +13,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
 LOG_PATH = '/data/script_logs/'
+DATA_PATH = '/data/script_data/'
 SENDER_EMAIL = 'twitifynd@example.com'
 MAIL_SERVER_HOSTNAME = 'mail'
 ARTIST_RESULT_FILE = "/data/script_counters/artist_result.txt"
