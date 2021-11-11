@@ -14,6 +14,9 @@ services:
       POSTGRES_DB: twitifynd
       POSTGRES_USER: postgres
       PGPASSWORD: twitter
+      SPOTIFY_ID: ${SPOTIFY_ID}
+      SPOTIFY_SECRET: ${SPOTIFY_SECRET}
+      TWITTER_BEARER: ${TWITTER_BEARER}
     volumes:
       - script_logs:/data/script_logs
       - script_data:/data/script_data

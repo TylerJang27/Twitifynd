@@ -35,18 +35,19 @@ user.fields (id, name, username, url, verified, description, protected, public_m
 # %% Environment setup
 
 def get_bearer():
-    config = dotenv_values(".env")
-    if len(config) == 0:
-        print("Please create your .env file")
-        exit()
+    # config = dotenv_values(".env")
+    # if len(config) == 0:
+    #     print("Please create your .env file")
+    #     exit()
     
-    if not 'TWITTER_BEARER' in config:
-        print("Please add your TWITTER_BEARER token to your .env file")
-        exit()
+    # if not 'TWITTER_BEARER' in config:
+    #     print("Please add your TWITTER_BEARER token to your .env file")
+    #     exit()
             
-    twitter_bearer = config['TWITTER_BEARER']
+    # twitter_bearer = config['TWITTER_BEARER']
+    twitter_bearer = os.getenv('TWITTER_BEARER')
     
-    if twitter_bearer == "default_secret":
+    if twitter_bearer == "default":
         print("Please add your TWITTER_BEARER token to your .env file")
         exit()
     return twitter_bearer

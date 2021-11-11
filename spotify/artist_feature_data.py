@@ -5,6 +5,7 @@ import time
 from collections import defaultdict
 import statistics
 from dotenv import dotenv_values
+import os
 
 '''
 In order to run this script, first run:
@@ -17,19 +18,21 @@ API Reference: https://developer.twitter.com/en/docs/api-reference-index
 # %% Environment setup
 
 def get_keys():
-    config = dotenv_values(".env")
-    if len(config) == 0:
-        print("Please create your .env file")
-        exit()
+    # config = dotenv_values(".env")
+    # if len(config) == 0:
+    #     print("Please create your .env file")
+    #     exit()
     
-    if not 'spotify_id' in config or not 'spotify_secret' in config:
-        print("Please add your spotify_id and spotify_secret token to your .env file")
-        exit()
+    # if not 'spotify_id' in config or not 'spotify_secret' in config:
+    #     print("Please add your spotify_id and spotify_secret token to your .env file")
+    #     exit()
             
-    spotify_id = config['spotify_id']
-    spotify_secret = config['spotify_secret']
+    # spotify_id = config['spotify_id']
+    # spotify_secret = config['spotify_secret']
+    spotify_id = os.getenv('SPOTIFY_ID')
+    spotify_secret = os.getenv('SPOTIFY_SECRET')
     
-    if spotify_id == "spotify_id" or spotify_secret == "spotify_secret":
+    if spotify_id == "default" or spotify_secret == "default":
         print("Please add your spotify_id and spotify_secret token to your .env file")
         exit()
     return spotify_id, spotify_secret
