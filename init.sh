@@ -12,6 +12,7 @@ if [ $ALERT_LEVEL -ge 2 ]; then
     python3 utils/utils.py
 fi
 
+# Detect 
 
 #       vvv ALL BELOW COULD BE CALLED HIERARCHICALLY IN PYTHON vvv
 # TODO: DETECT LAST INPUT OF ARTIST STREAM (Python)
