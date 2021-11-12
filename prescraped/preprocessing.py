@@ -53,7 +53,7 @@ for ind in df.index:
     spotify_followers = df.iloc[ind, 1]
     spotify_genres = df.iloc[ind, 2]
     spotify_name = df.iloc[ind, 3]
-    # spotify_popularity = df.iloc[ind, 4]
+    spotify_popularity = df.iloc[ind, 4]
 
     if spotify_name in artists_avail:        
         da_m = averages["danceability"][spotify_name]
@@ -89,16 +89,31 @@ for ind in df.index:
         ta_m = averages["target"][spotify_name]
         ta_sd = std["target"][spotify_name]
         
-        artist_result.append([spotify_id, spotify_name, spotify_genres, spotify_followers, da_m, da_sd, en_m, en_sd, ke_m, ke_sd, lo_m, lo_sd, mo_m, mo_sd, sp_m, sp_sd, ac_m, ac_sd, in_m, in_sd, li_m, li_sd, va_m, va_sd, te_m, te_sd, du_m, du_sd, ts_m, ts_sd, ch_m, ch_sd, se_m, se_sd, ta_m, ta_sd])
+        artist_result.append([spotify_id, spotify_name, spotify_genres, spotify_followers, spotify_popularity, da_m, da_sd, en_m, en_sd, ke_m, ke_sd, lo_m, lo_sd, mo_m, mo_sd, sp_m, sp_sd, ac_m, ac_sd, in_m, in_sd, li_m, li_sd, va_m, va_sd, te_m, te_sd, du_m, du_sd, ts_m, ts_sd, ch_m, ch_sd, se_m, se_sd, ta_m, ta_sd])
     else:
-        missing_artists.append([spotify_id, spotify_name, spotify_genres, spotify_followers])
+        missing_artists.append([spotify_id, spotify_name, spotify_genres, spotify_followers, spotify_popularity])
 df_artist_results = pd.DataFrame(artist_result)
-header = ["id", "name", "genres", "followers", "mean_danceability", "sd_danceability", "mean_energy", "sd_energy", "mean_key", "sd_key", "mean_loudness", "sd_loudness", "mean_mode", "sd_mode", "mean_speechiness", "sd_speechiness", "mean_acousticness", "sd_acousticness", "mean_instrumentalness", "sd_instrumentalness", "mean_liveness", "sd_liveness", "mean_valence", "sd_valence", "mean_tempo", "sd_tempo", "mean_duration_ms", "sd_duration_ms", "mean_time_signature", "sd_time_signature", "mean_chorus_hit", "sd_chorus_hit", "mean_sections", "sd_sections", "mean_target", "sd_target"]
+header = ["id", "name", "genres", "followers", "popularity", "mean_danceability", "sd_danceability", "mean_energy", "sd_energy", "mean_key", "sd_key", "mean_loudness", "sd_loudness", "mean_mode", "sd_mode", "mean_speechiness", "sd_speechiness", "mean_acousticness", "sd_acousticness", "mean_instrumentalness", "sd_instrumentalness", "mean_liveness", "sd_liveness", "mean_valence", "sd_valence", "mean_tempo", "sd_tempo", "mean_duration_ms", "sd_duration_ms", "mean_time_signature", "sd_time_signature", "mean_chorus_hit", "sd_chorus_hit", "mean_sections", "sd_sections", "mean_target", "sd_target"]
+df_artist_results.columns = header
+df_artist_results = df_artist_results.sort_values(by=["popularity", "followers", "genres", "name"], ascending=False)
 df_artist_results.to_csv('artist_result.csv', index=False, header=header)
 
 df_missing_artists = pd.DataFrame(missing_artists)
-header = ["id", "name", "genres", "followers"]
+header = ["id", "name", "genres", "followers", "popularity"]
+df_missing_artists.columns = header
+df_missing_artists = df_missing_artists.sort_values(by=["popularity", "followers", "genres", "name"], ascending=False)
 df_missing_artists.to_csv('missing_artists.csv', index=False, header=header)
+
+# header = ["id", "name", "genres", "followers", "mean_danceability", "sd_danceability", "mean_energy", "sd_energy", "mean_key", "sd_key", "mean_loudness", "sd_loudness", "mean_mode", "sd_mode", "mean_speechiness", "sd_speechiness", "mean_acousticness", "sd_acousticness", "mean_instrumentalness", "sd_instrumentalness", "mean_liveness", "sd_liveness", "mean_valence", "sd_valence", "mean_tempo", "sd_tempo", "mean_duration_ms", "sd_duration_ms", "mean_time_signature", "sd_time_signature", "mean_chorus_hit", "sd_chorus_hit", "mean_sections", "sd_sections", "mean_target", "sd_target"]
+# df_artist_results = pd.read_csv("artist_result.csv")
+# df_artist_results = df_artist_results.sort_values(by=["popularity", "followers", "genres", "name"], ascending=False)
+# df_artist_results.to_csv('artist_result2.csv', index=False, header=header)
+
+# header = ["id", "name", "genres", "followers"]
+# df_missing_artists = pd.read_csv("missing_artists.csv")
+# df_missing_artists = df_missing_artists.sort_values(by=["followers", "genres", "name"], ascending=False)
+# df_missing_artists.to_csv('missing_artists_popular.csv', index=False, header=header)
+
 
 # for feature in averages:
 #     for artist in averages[feature]:
