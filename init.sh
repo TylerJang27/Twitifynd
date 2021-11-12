@@ -56,29 +56,51 @@ fi
 # VVV IN PARALLEL VVV
 # 1. Using the current value of ARTIST_RESULT_LINE, if it's less than the length of the file (~10,000):
 #   a. Read the artist_result.csv into the database
+EXIST_QUERY="SELECT COUNT(*) FROM spotify_artist;"
+number_spotify_artists=$(psql -h db -p 5432 -U ${POSTGRES_USER} -c "$EXIST_QUERY" $POSTGRES_DB | tail -n 3 | head -n 1)
+
+if [ $ARTIST_RESULT_LINE -eq -1 ] || [ $number_spotify_artists -eq 0 ]; then
+    echo "Performing initial load"
+    /bin/bash db/initial_load.sh
+    echo "0" > ${ARTIST_RESULT_FILE}
+else
+    echo "Performing load from backup" # if tuple already exists, will not be overwritten, may throw warning
+    /bin/bash db/load_from_backup.sh
+fi
 #   b. Note the null values, particularly twitter_id. Query the Spotify HTML page for their twitter_handles/ids (with waits)
 #   c. Query Twitter API for follower/user data. Write/update to database.
 #   d. Add followers/followings(?) as empty twitter_user stubs to database and via following relationship
 #   e. Add followers/followings' IDs and handles to another file, relevant to TWITTER_USER_QUEUE.
 #   f. Periodically update ARTIST_RESULT_LINE
+# TODO: CALL PYTHON FILE WITH FOR QUERYING SPOTIFY WITH $ARTIST_RESULT_LINE
+if [ $SKIP_ARTIST_RESULT -ne 1 ]; then
+    echo "Beginning Spotify queries for artist_result"
+    python3 twitter/parse_spotify_artists.py $ARTIST_RESULT_LINE
+    # TODO: EVERY COUPLE HOURS OR SO IN THE SCRIPTS, EXPORT BY EXECUTING THE FOLLOWING:
+    # /bin/bash db/export.sh
+else
+    echo "Skipping Spotify queries for artist_result"
+fi
 
 #   If ARTIST_RESULT_LINE > length of the file (~10,000)
-#   a. Query the database for null Twitter_ids, start at ARTIST_ID
+#   a. Query the database for null Twitter_ids, start at ARTIST_ID (maybe deprecate this variable)
 #   b-d. Repeat b-d as above.
 #   e. Periodically update ARTIST_ID
 
 # 2. Using the current value of MISSING_SONG_ATTRIBUTES, if it's less than the length of missing_artists (most certainly, >1,000,000):
 #   a. Starting at line MISSING_SONG_ATTRIBUTES in missing_artists.csv, query Spotify API for song attributes
-#   b. Add artist to database
+#   b. Add artist to database in spotify_artist table
 #   c. Periodically update MISSING_SONG_ATTRIBUTES
+# TODO: @JUSTIN @ANDREW
+# TODO: EVERY COUPLE HOURS OR SO IN THE SCRIPTS, EXPORT BY EXECUTING THE FOLLOWING:
+# /bin/bash db/export.sh
 
 # 3. OPTIONAL (although unlikely): use the names/handles from TWITTER_USER_QUEUE to do get other user data as desired
 
 # ^^^ IN PARALLEL ^^^
 
 
-# TODO: ON A CRONJOB EVERY (1?) HOURS, OUTPUT ALL THE TABLES TO CSVS AND EMAIL THEM
-# /bin/bash db/export.sh # TODO: REPLACE WITH CLIENT-SIDE RATHER THAN SERVER SIDE COPY FUNCTION
+
 
 
 # TODO: DEFINE A VIEW FOR THE ARTISTS THAT HAVE NON-NULL SPOTIFY AND TWITTER INFO

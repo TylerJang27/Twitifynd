@@ -8,8 +8,6 @@ services:
       POSTGRES_PASSWORD: twitter
     ports:
       - 5432:5432
-    volumes:
-      - script_data:/data/script_data
   mail:
     image: bytemark/smtp
     restart: always
@@ -26,6 +24,7 @@ services:
       TWITTER_BEARER: ${TWITTER_BEARER}
       RECEIVER_EMAIL: ${RECEIVER_EMAIL}
       ALERT_LEVEL: 1
+      SKIP_ARTIST_RESULT: 0
       # ALERT_LEVEL: 1-minimal, warnings only; 2-startup and other events; 3-verbose
     volumes:
       - script_logs:/data/script_logs
