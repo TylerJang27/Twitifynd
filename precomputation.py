@@ -5,7 +5,7 @@ from sklearn.cluster import KMeans
 import json
 
 with open('prescraped/artist_result.csv') as c:
-    table = pd.read_csv(c)
+    table = pd.read_csv(c, header=None)
 
 popular = table[table.iloc[:, 4] >= 65]
 candidates = table[table.iloc[:,4]<65]
