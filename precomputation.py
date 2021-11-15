@@ -87,6 +87,16 @@ for pid in popular_candidates:
         score = similarity*novelty
         candidates_scores[pid].append(tuple((cid, score)))
 
+name_find = {}
+for artist in artist_info:
+    name = artist_info[artist]['name']
+    if name in name_find:
+        name_find[name].append(artist)
+    else:
+        name_find[name] = [artist]
+
+with open('precomputed/name_find.json', 'w') as nf_file:
+    json.dump(name_find, nf_file)
 with open('precomputed/artist_info.json', 'w') as ai_file:
     json.dump(artist_info, ai_file)
 with open('precomputed/candidates_scores.json', 'w') as cs_file:
