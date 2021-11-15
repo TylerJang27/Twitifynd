@@ -13,13 +13,15 @@ class Recommend:
         all_recs = {}
         for artist in artists:
             all_recs[artist] = {'name': self.artist_info[artist]['name']}
-            df_recs = pd.DataFrame(columns=['name', 'score'])
+            df_recs = pd.DataFrame(columns=['id', 'name', 'score'])
             for candidate in self.candidates_scores.get(artist):
                 df_recs = df_recs.append({
+                    'id': candidate[0],
                     'name': self.artist_info[candidate[0]]['name'],
-                    'score': candidate[1]
+                    'score': round(candidate[1])
                 }, ignore_index=True)
             df_recs.sort_values(by='score', ascending=False, inplace=True)
+            df_recs.drop_duplicates(subset=['name'], inplace=True)
             all_recs[artist]['recs'] = df_recs.head()
         return all_recs
 
