@@ -4,9 +4,43 @@ import pandas as pd
 import time
 from collections import defaultdict
 import statistics
+<<<<<<< HEAD
 
 client_id = '0427be66657647dfa34c33a8f77740be'
 client_secret = '178c632f057948fba89f7c72e1d946e3'
+=======
+from dotenv import dotenv_values
+
+'''
+In order to run this script, first run:
+    pip install python-dotenv
+    cp template.env .env # edit it to contain the spotify_id and spotify_secret token
+   
+API Reference: https://developer.twitter.com/en/docs/api-reference-index
+'''
+
+# %% Environment setup
+
+def get_keys():
+    config = dotenv_values(".env")
+    if len(config) == 0:
+        print("Please create your .env file")
+        exit()
+    
+    if not 'spotify_id' in config or not 'spotify_secret' in config:
+        print("Please add your spotify_id and spotify_secret token to your .env file")
+        exit()
+            
+    spotify_id = config['spotify_id']
+    spotify_secret = config['spotify_secret']
+    
+    if spotify_id == "spotify_id" or spotify_secret == "spotify_secret":
+        print("Please add your spotify_id and spotify_secret token to your .env file")
+        exit()
+    return spotify_id, spotify_secret
+
+client_id, client_secret = get_keys()
+>>>>>>> c57291acd6a5746fa8e9b7f1270ff436f383c773
 
 client_credentials_manager = SpotifyClientCredentials(client_id, client_secret)
 
