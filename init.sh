@@ -8,6 +8,8 @@ echo "***Beginning setup of postgresql***"
 sleep 1
 echo "***Beginning analyzing artists***"
 
+export PYTHONPATH="${PYTHONPATH}:/code/"
+
 # Detect current values of ARTIST_RESULT_LINE, ARTIST_ID, MISSING_SONG_ATTRIBUTES, and TWITTER_USER_QUEUE
 ARTIST_RESULT_FILE=/data/script_counters/artist_result.txt
 ARTIST_ID_FILE=/data/script_counters/artist_id.txt

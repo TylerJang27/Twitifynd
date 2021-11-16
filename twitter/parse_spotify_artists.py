@@ -1,4 +1,4 @@
-from ..utils.utils import Config, EmailWrapper, FileWrapper, LoggerWrapper
+from utils.utils import Config, EmailWrapper, FileWrapper, LoggerWrapper
 import sys
 import pandas as pd
 
@@ -20,14 +20,14 @@ def extract_all(offset=0):
     count_rows_parsed = 0
     count_twitter_extracted = 0
 
-    for ind in df.index:
-        spotify_id = df.iloc[ind, 0]
-        spotify_name = df.iloc[ind, 1]
+    for ind in artist_result_csv.index:
+        spotify_id = artist_result_csv.iloc[ind, 0]
+        spotify_name = artist_result_csv.iloc[ind, 1]
         # TODO: EXTRACT OTHER FIELDS AS NECESSARY, SEE preprocessing.py
 
-        if count % 10 == 0:
-            logger.twitter_debug("Parsing {:}th artist for HTML, {:}".format(count, spotify_name))
-        count += 1
+        if count_rows_parsed % 10 == 0:
+            logger.twitter_debug("Parsing {:}th artist for HTML, {:}".format(count_rows_parsed, spotify_name))
+        count_rows_parsed += 1
 
         twitter_id = extract_twitter_id(spotify_id)
         if twitter_id is None:
@@ -43,18 +43,18 @@ def extract_all(offset=0):
         count_twitter_extracted += 1
 
 
-        if count % 100 == 0:
-           logger.twitter_debug("Exporting for safety at count of {:}".format(count))
+        if count_rows_parsed % 100 == 0:
+           logger.twitter_debug("Exporting for safety at count of {:}".format(count_rows_parsed))
             # TODO: at some point, periodically, call FileWrapper.writeValToFile(ARTIST_RESULT_FILE, count_rows_parsed+offset)
 
             # TODO: at some point, periodically, call /bin/bash /db/export.sh and then take the resulting exported csvs and email them using EmailWrapper (you will have to get the filepaths somehow)
         # TODO: PROBS ADD A WAIT HERE FOR TIMEBOXING
 
 if __name__ == "__main__":
-    if len(sys.argv) <= 1 or sys.argv[1] != "":
-        logger.twitter_warn("Bad argument: ", sys.argv[1] if len(sys.argv) > 1 else "missing")
+    if len(sys.argv) <= 1 or sys.argv[1] == "":
+        logger.twitter_warn("Bad argument: " + (sys.argv[1] if len(sys.argv) > 1 else "missing"))
         sys.exit()
-    artist_result_offset = sys.argv[1]
+    artist_result_offset = int(sys.argv[1])
     if artist_result_offset < 0:
         artist_result_offset = 0
     elif artist_result_offset > 20000:
