@@ -59,7 +59,6 @@ CREATE TABLE spotify_artist(
 );
 CREATE TABLE artist (
     id int NOT NULL PRIMARY KEY,
-    artist_name varchar(50), /* should we scrap this in favor of the spotify name? */
     twitter_id int NULL, /* I was thinking we may have spotify or twitter users without being linked to start with, so it may be useful to keep this structure */
     spotify_id char(22) NULL,
     FOREIGN KEY (twitter_id) REFERENCES twitter_user(twitter_id),
