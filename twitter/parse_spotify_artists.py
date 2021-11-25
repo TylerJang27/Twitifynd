@@ -1,6 +1,7 @@
 from utils.utils import Config, EmailWrapper, FileWrapper, LoggerWrapper
 import sys
 import pandas as pd
+import requests
 
 ARTIST_RESULT_CSV = "/code/prescraped/artist_result.csv"
 logger=LoggerWrapper()
@@ -9,11 +10,44 @@ def extract_twitter_id(spotify_id):
     # TODO: USE BEAUTIFUL SOUP OR SOMETHING, USE THE WEB URI AND SCRAPE FOR THE TWITTER FIELD IN THE DESCRIPTION/BIO
     # may need to convert to int
     # also handle request error codes as necessary
-    return None
+
+    r = requests.get('https://open.spotify.com/artist/{:}'.format(spotify_id))
+
+    if r.status_code != 200:
+        logger.twitter_warn("Unable to perform HTTP request for ID: {:}".format(spotify_id))
+
+    # {"name":"TWITTER","url":"https://twitter.com/justinbieber"}
+    try:
+        twitter_id = r.text.split('{"name":"TWITTER","url":"https://twitter.com/')[1].split('"')[0]
+    except IndexError:
+        logger.twitter_warn("User has not connected their Spotify to Twitter")
+        return -1
+
+    return twitter_id
 
 def extract_twitter_info(twitter_id):
-    # TODO: USE REQUESTS TO QUERY TWITTER API FOR FOLLOWER/FOLLOWING INFO AS DESIRED, SEE twitter_scraper.py FOR REFERENCE
-    return None
+    headers = {"Authorization": "Bearer {:}".format($TWITTER_BEARER)}
+
+    user_id_r = requests.get('https://api.twitter.com/2/users/by/username/{:}'.format(twitter_id), headers=headers)
+    
+    if user_id_r.status_code != 200:
+        logger.twitter_warn("Unable to perform HTTP request for ID: {:}".format(twitter_id))
+    
+    user_id = int(json.loads(user_id_r.text)['data']['id'])
+    
+    followers_r = requests.get('https://api.twitter.com/2/users/{:}/following'.format(user_id), headers=headers)
+    
+    if user_id_r.status_code != 200:
+        logger.twitter_warn("Unable to perform HTTP request for ID: {:}".format(user_id))
+    
+    data = json.loads(followers_r.text)['data']
+    
+    list_of_ids = []
+    
+    for i in data:
+        list_of_ids += [i['username']]
+    
+    return list_of_ids
 
 def extract_all(offset=0):
     artist_result_csv = pd.read_csv(ARTIST_RESULT_CSV, skiprows=offset)
