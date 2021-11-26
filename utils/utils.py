@@ -26,7 +26,7 @@ class Config(object):
     TWITTER_BEARER = os.environ.get('TWITTER_BEARER')
     SPOTIFY_ID = os.environ.get('SPOTIFY_ID')
     SPOTIFY_SECRET = os.environ.get('SPOTIFY_SECRET')
-    SQLALCHEMY_DATABASE_URI = 'postgresql://{}:{}@localhost/{}'\
+    SQLALCHEMY_DATABASE_URI = 'postgresql://{}:{}@db/{}'\
         .format(os.environ.get('POSTGRES_USER'),
                 os.environ.get('PGPASSWORD'),
                 os.environ.get('POSTGRES_DB'))

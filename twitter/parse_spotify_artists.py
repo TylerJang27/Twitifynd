@@ -1,4 +1,5 @@
 from utils.utils import Config, EmailWrapper, FileWrapper, LoggerWrapper
+from sqlalchemy import create_engine, text
 import sys
 import pandas as pd
 import requests
@@ -10,6 +11,8 @@ import os
 
 ARTIST_RESULT_CSV = "/code/prescraped/artist_result.csv"
 ARTIST_RESULT_CSV = "prescraped/artist_result.csv"
+
+engine = None
 logger = LoggerWrapper()
 # logger = MagicMock()
 config = Config()
@@ -58,6 +61,24 @@ def parse_twitter_user_and_write(data_obj):
 
     twitter_user_obj = [twitter_id, twitter_username, twitter_name, bio, verified, protected, followers_count, following_count, tweet_count, listed_count]
     # TODO: WRITE twitter_user TO DATABASE
+
+    with engine.connect() as conn:
+        result = conn.execute(text("""
+                INSERT INTO twitter_user(twitter_id, twitter_username, twitter_name, bio, verified, protected, followers_count, following_count, tweet_count, listed_count)
+                VALUES(:twitter_id, :twitter_username, :twitter_name, :bio, :verified, :protected, :followers_count, :following_count, :tweet_count, :listed_count)
+                RETURNING twitter_id
+                """).params(
+                    twitter_id=twitter_id, 
+                    twitter_username=twitter_username, 
+                    twitter_name=twitter_name, 
+                    bio=bio, 
+                    verified=verified, 
+                    protected=protected, 
+                    followers_count=followers_count, 
+                    following_count=following_count, 
+                    tweet_count=tweet_count, 
+                    listed_count=listed_count))
+
 
     return twitter_user_obj
 
@@ -232,6 +253,7 @@ def extract_all(artist_result_offset=0, artist_following_offset=0):
     # end of func
 
 if __name__ == "__main__":
+    engine = create_engine(config.SQLALCHEMY_DATABASE_URI, execution_options={"isolation_level": "SERIALIZABLE"})
     if len(sys.argv) <= 2 or sys.argv[1] == "" or sys.argv[2] == "":
         logger.twitter_warn("Bad argument: ", sys.argv[1] if len(sys.argv) > 1 else "missing", sys.argv[2] if len(sys.argv) > 2 else "missing")
         sys.exit()
