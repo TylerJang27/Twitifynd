@@ -1,9 +1,8 @@
 CREATE TABLE testtable (id INT); /* TODO: REMOVE */
 CREATE TABLE twitter_user(
-    twitter_id int NOT NULL PRIMARY KEY,
+    twitter_id bigint NOT NULL PRIMARY KEY,
     twitter_username varchar(50) NOT NULL,
     twitter_name varchar(50) NOT NULL,
-    bio varchar(160) NOT NULL,
     verified boolean NOT NULL,
     protected boolean NOT NULL,
     followers_count INT NOT NULL,
@@ -12,8 +11,8 @@ CREATE TABLE twitter_user(
     listed_count INT NOT NULL
 );
 CREATE TABLE following(
-    follower_id int NOT NULL,
-    followed_id int NOT NULL,
+    follower_id bigint NOT NULL,
+    followed_id bigint NOT NULL,
     PRIMARY KEY (follower_id, followed_id),
     FOREIGN KEY (follower_id) REFERENCES twitter_user(twitter_id),
     FOREIGN KEY (followed_id) REFERENCES twitter_user(twitter_id)
@@ -58,8 +57,8 @@ CREATE TABLE spotify_artist(
     sd_target FLOAT NULL
 );
 CREATE TABLE artist (
-    id int NOT NULL PRIMARY KEY,
-    twitter_id int NULL, /* I was thinking we may have spotify or twitter users without being linked to start with, so it may be useful to keep this structure */
+    id SERIAL,
+    twitter_id bigint NULL, /* I was thinking we may have spotify or twitter users without being linked to start with, so it may be useful to keep this structure */
     spotify_id char(22) NULL,
     FOREIGN KEY (twitter_id) REFERENCES twitter_user(twitter_id),
     FOREIGN KEY (spotify_id) REFERENCES spotify_artist(spotify_id)

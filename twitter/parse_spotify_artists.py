@@ -1,5 +1,5 @@
 from utils.utils import Config, EmailWrapper, FileWrapper, LoggerWrapper
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, text, exc
 import sys
 import pandas as pd
 import requests
@@ -61,24 +61,24 @@ def parse_twitter_user_and_write(data_obj):
 
     twitter_user_obj = [twitter_id, twitter_username, twitter_name, bio, verified, protected, followers_count, following_count, tweet_count, listed_count]
     # TODO: WRITE twitter_user TO DATABASE
-
-    with engine.connect() as conn:
-        result = conn.execute(text("""
-                INSERT INTO twitter_user(twitter_id, twitter_username, twitter_name, bio, verified, protected, followers_count, following_count, tweet_count, listed_count)
-                VALUES(:twitter_id, :twitter_username, :twitter_name, :bio, :verified, :protected, :followers_count, :following_count, :tweet_count, :listed_count)
-                RETURNING twitter_id
-                """).params(
-                    twitter_id=twitter_id, 
-                    twitter_username=twitter_username, 
-                    twitter_name=twitter_name, 
-                    bio=bio, 
-                    verified=verified, 
-                    protected=protected, 
-                    followers_count=followers_count, 
-                    following_count=following_count, 
-                    tweet_count=tweet_count, 
-                    listed_count=listed_count))
-
+    try:
+        with engine.connect() as conn:
+            result = conn.execute(text("""
+                    INSERT INTO twitter_user(twitter_id, twitter_username, twitter_name, verified, protected, followers_count, following_count, tweet_count, listed_count)
+                    VALUES(:twitter_id, :twitter_username, :twitter_name, :verified, :protected, :followers_count, :following_count, :tweet_count, :listed_count)
+                    RETURNING twitter_id
+                    """).params(
+                        twitter_id=twitter_id, 
+                        twitter_username=twitter_username, 
+                        twitter_name=twitter_name, 
+                        verified=verified, 
+                        protected=protected, 
+                        followers_count=followers_count, 
+                        following_count=following_count, 
+                        tweet_count=tweet_count, 
+                        listed_count=listed_count))
+    except exc.IntegrityError:
+        print("There was a duplicate twitter user")
 
     return twitter_user_obj
 
@@ -104,6 +104,17 @@ def extract_base_twitter_info(twitter_username, spotify_id):
     
     # artist_obj = [id?, twitter_id, spotify_id]
     # TODO: WRITE artist TO DATABASE (LINK SPOTIFY AND ARTIST NAME)
+    try:
+        with engine.connect() as conn:
+            result = conn.execute(text("""
+                INSERT INTO artist(twitter_id, spotify_id)
+                VALUES(:twitter_id, :spotify_id)
+                RETURNING twitter_id
+                """).params(
+                    twitter_id=twitter_id,
+                    spotify_id=spotify_id))
+    except exc.IntegrityError:
+        print("There was a duplicate artist")
 
     return twitter_id
 
@@ -138,6 +149,17 @@ def extract_twitter_following_info(twitter_id, next_token=""):
 
         # TODO: WRITE following TO DATABASE (Link original artist to current user)
         # following_obj = [twitter_id, following_user_data[0]]
+        try:
+            with engine.connect() as conn:
+                result = conn.execute(text("""
+                    INSERT INTO following(follower_id, followed_id)
+                    VALUES(:follower_id, :followed_id)
+                    RETURNING follower_id
+                    """).params(
+                        follower_id=twitter_id,
+                        followed_id=following_user_data[0]))
+        except exc.IntegrityError:
+            print("There was a duplicate following directed pair")
     
     return following_user_list, next_token
 
@@ -216,10 +238,24 @@ def extract_all(artist_result_offset=0, artist_following_offset=0):
 
         # 15 per 15 minute, 1 per minute, 1 per 60 seconds
         print(spotify_to_twitter)
-        f_twitter_id = spotify_to_twitter.get(f_spotify_id)
+        f_twitter_id = None #spotify_to_twitter.get(f_spotify_id)
         if f_twitter_id is None:
             print()
             # TODO: QUERY DB TO GET TWITTER ID FOR AN ARTIST
+            try:
+                with engine.connect() as conn:
+                    result = conn.execute(text("""
+                        SELECT twitter_id
+                        FROM artist
+                        WHERE :spotify_id = spotify_id
+                        """).params(
+                            spotify_id=f_spotify_id)).first()
+                    print(result)
+                    if(len(result) > 0):
+                        f_twitter_id = result[0]
+            except exc.IntegrityError:
+                print("There was a duplicate following directed pair")
+            print(f_twitter_id)
 
         if f_twitter_id is None:
             f_count += 1
