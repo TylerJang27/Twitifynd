@@ -1,101 +1,255 @@
-from ..utils.utils import Config, EmailWrapper, FileWrapper, LoggerWrapper
+from utils.utils import Config, EmailWrapper, FileWrapper, LoggerWrapper
 import sys
 import pandas as pd
 import requests
+import time
+import json
+
+from unittest.mock import MagicMock
+import os
 
 ARTIST_RESULT_CSV = "/code/prescraped/artist_result.csv"
-logger=LoggerWrapper()
+ARTIST_RESULT_CSV = "prescraped/artist_result.csv"
+logger = LoggerWrapper()
+# logger = MagicMock()
+config = Config()
 
+headers = {"Authorization": "Bearer {:}".format(config.TWITTER_BEARER)}
+# headers = {"Authorization": "Bearer {:}".format('')}
+spotify_to_twitter = {}
+
+#####################
+# SPOTIFY ENDPOINTS #
+#####################
+# Retrieve and return a twitter username given a spotify ID
 def extract_twitter_id(spotify_id):
-    # TODO: USE BEAUTIFUL SOUP OR SOMETHING, USE THE WEB URI AND SCRAPE FOR THE TWITTER FIELD IN THE DESCRIPTION/BIO
-    # may need to convert to int
-    # also handle request error codes as necessary
-
     r = requests.get('https://open.spotify.com/artist/{:}'.format(spotify_id))
 
     if r.status_code != 200:
         logger.twitter_warn("Unable to perform HTTP request for ID: {:}".format(spotify_id))
+        return -1
 
     # {"name":"TWITTER","url":"https://twitter.com/justinbieber"}
     try:
-        twitter_id = r.text.split('{"name":"TWITTER","url":"https://twitter.com/')[1].split('"')[0]
+        twitter_id = r.text.split('{"name":"TWITTER","url":"https://twitter.com/')[1].split('"')[0].split('?')[0]
     except IndexError:
         logger.twitter_warn("User has not connected their Spotify to Twitter")
         return -1
 
     return twitter_id
 
-def extract_twitter_info(twitter_id):
-    headers = {"Authorization": "Bearer {:}".format($TWITTER_BEARER)}
+#####################
+# TWITTER ENDPOINTS #
+#####################
 
-    user_id_r = requests.get('https://api.twitter.com/2/users/by/username/{:}'.format(twitter_id), headers=headers)
+# Parses a dictionary of data about a Twitter user and write to db
+def parse_twitter_user_and_write(data_obj):
+    twitter_id = int(data_obj.get('id'))
+    twitter_username = data_obj.get('username')
+    twitter_name = data_obj.get('name')
+    bio = data_obj.get('description')
+    verified = data_obj.get('verified')
+    protected = data_obj.get('protected')
+    public_metrics = data_obj['public_metrics']
+    followers_count = public_metrics.get('followers_count')
+    following_count = public_metrics.get('following_count')
+    tweet_count = public_metrics.get('tweet_count')
+    listed_count = public_metrics.get('listed_count')
+
+    twitter_user_obj = [twitter_id, twitter_username, twitter_name, bio, verified, protected, followers_count, following_count, tweet_count, listed_count]
+    # TODO: WRITE twitter_user TO DATABASE
+
+    return twitter_user_obj
+
+
+# Retrieve and return a twitter id and write to database for an artist
+def extract_base_twitter_info(twitter_username, spotify_id):
+    # 300 calls per 15 minutes
+    twitter_id_request_string = 'https://api.twitter.com/2/users/by/username/{:}?user.fields=id,name,verified,description,protected,public_metrics,location'
+    user_id_r = requests.get(twitter_id_request_string.format(twitter_username), headers=headers)
     
     if user_id_r.status_code != 200:
-        logger.twitter_warn("Unable to perform HTTP request for ID: {:}".format(twitter_id))
+        logger.twitter_warn("Unable to perform HTTP request for ID: {:}".format(twitter_username))
+        return user_id_r.status_code
     
-    user_id = int(json.loads(user_id_r.text)['data']['id'])
-    
-    followers_r = requests.get('https://api.twitter.com/2/users/{:}/following'.format(user_id), headers=headers)
-    
-    if user_id_r.status_code != 200:
-        logger.twitter_warn("Unable to perform HTTP request for ID: {:}".format(user_id))
-    
-    data = json.loads(followers_r.text)['data']
-    
-    list_of_ids = []
-    
-    for i in data:
-        list_of_ids += [i['username']]
-    
-    return list_of_ids
+    json_data = json.loads(user_id_r.text)
+    if "errors" in json_data:
+        logger.twitter_warn("Error twitter response for user_id query: {:}".format(twitter_username))
+        return -1
 
-def extract_all(offset=0):
-    artist_result_csv = pd.read_csv(ARTIST_RESULT_CSV, skiprows=offset)
-    count_rows_parsed = 0
-    count_twitter_extracted = 0
+    data_obj = json_data['data']
+    parse_twitter_user_and_write(data_obj)
+    twitter_id = int(data_obj.get('id'))
+    
+    # artist_obj = [id?, twitter_id, spotify_id]
+    # TODO: WRITE artist TO DATABASE (LINK SPOTIFY AND ARTIST NAME)
 
-    for ind in df.index:
-        spotify_id = df.iloc[ind, 0]
-        spotify_name = df.iloc[ind, 1]
-        # TODO: EXTRACT OTHER FIELDS AS NECESSARY, SEE preprocessing.py
+    return twitter_id
 
-        if count % 10 == 0:
-            logger.twitter_debug("Parsing {:}th artist for HTML, {:}".format(count, spotify_name))
-        count += 1
-
-        twitter_id = extract_twitter_id(spotify_id)
-        if twitter_id is None:
-            logger.twitter_debug("Unable to retrieve twitter_id for {:} : {:}".format(spotify_id, spotify_name))
-            continue
-
-        twitter_info = extract_twitter_info(twitter_id) # TODO: TIMEBOX
-        if twitter_info is None:
-            logger.twitter_warn("Unable to retrieve twitter info for {:} : {:} with twitter handle {:}".format(spotify_id, spotify_name, twitter_id))
-            continue
+# Retrieve and write a following list to database for an artist
+def extract_twitter_following_info(twitter_id, next_token=""):
+    # 15 calls per 15 minutes
+    initial_followers_request_string = 'https://api.twitter.com/2/users/{:}/following?user.fields=id,name,username,verified,description,protected,public_metrics&max_results=1000'
+    subsequent_followers_request_string = 'https://api.twitter.com/2/users/{:}/following?user.fields=id,name,username,verified,description,protected,public_metrics&max_results=1000&pagination_token={:}'
+    if next_token == "":
+        followers_r = requests.get(initial_followers_request_string.format(twitter_id), headers=headers)
+    else:
+        followers_r = requests.get(subsequent_followers_request_string.format(twitter_id, next_token), headers=headers)
         
-        # TODO: WRITE TO DATABASE, POTENTIALLY SEE 316 CODE FOR SAMPLES, MAY BE USEFUL TO ADD DBWrapper AS A CLASS TO utils.py
-        count_twitter_extracted += 1
+    if followers_r.status_code != 200:
+        logger.twitter_warn("Unable to perform HTTP request for ID: {:}".format(twitter_id))
+        return followers_r.status_code, None
+    
+    if "errors" in followers_r:
+        print(followers_r['errors'])
+        logger.twitter_warn("Error twitter response for followers query: {:}".format(twitter_id))
+        return -1, None
+    
+    json_data = json.loads(followers_r.text)
+    meta_obj = json_data.get('meta')
+    next_token = json_data.get('next_token')
 
+    data_obj = json_data.get('data')
+    following_user_list = []
+    for following_user in data_obj:
+        following_user_data = parse_twitter_user_and_write(following_user)
+        following_user_list.append(following_user_data)
 
-        if count % 100 == 0:
-           logger.twitter_debug("Exporting for safety at count of {:}".format(count))
+        # TODO: WRITE following TO DATABASE (Link original artist to current user)
+        # following_obj = [twitter_id, following_user_data[0]]
+    
+    return following_user_list, next_token
+
+# timebox and extract twitter information
+def extract_all(artist_result_offset=0, artist_following_offset=0):
+    artist_result_df = pd.read_csv(ARTIST_RESULT_CSV, header=None, skiprows=artist_result_offset)
+    artist_result_follower_df = pd.read_csv(ARTIST_RESULT_CSV, header=None, skiprows=artist_following_offset)
+
+    artist_result_max = artist_result_df.index.stop
+    artist_result_follower_max = artist_result_max
+
+    u_count = 0
+    f_count = 0
+
+    last_user_time = 0.0
+    last_following_time = 0.0
+
+    next_token = ""
+
+    # while True:
+    for k in range(1):
+        # user queries
+
+        # 300 per 15 minute, 20 per minute, 1 per 3 seconds
+        for k in range(5):
+            # print(u_count)
+            curr_time = time.time()
+            diff_delay = curr_time - last_user_time - 3
+            if diff_delay < 0:
+                time.sleep(-1*diff_delay + 0.1)
+
+            u_ind = artist_result_offset + u_count
+            if u_ind >= artist_result_max:
+                break
+            u_spotify_id = artist_result_df.iloc[u_ind, 0]
+            u_spotify_name = artist_result_df.iloc[u_ind, 1]
+
+            if u_count % 10 == 0:
+                logger.twitter_debug("Parsing {:}th artist for HTML, {:}".format(u_count, u_spotify_name))
+
+            # spotify_id -> twitter_username
+            u_twitter_username = extract_twitter_id(u_spotify_id)
+            if u_twitter_username == -1:
+                u_count += 1
+                continue
+
+            # twitter_username, spotify_id -> twitter_id, @write(twitter_user)
+            u_twitter_id = extract_base_twitter_info(u_twitter_username, u_spotify_id)
+            last_user_time = time.time()
+            if u_twitter_id == 429:
+                logger.twitter_warn("Rate limit exceeded for users at {:}".format(u_count))
+                continue
+            if u_twitter_id == -1:
+                u_count += 1
+                continue
+            
+            # add to dictionary for easier follower queries
+            spotify_to_twitter[u_spotify_id] = u_twitter_id
+            u_count += 1
+            # print(u_spotify_id, u_spotify_name, u_twitter_id)
+
+        # follower_queries
+        f_ind = artist_following_offset + f_count
+        if f_ind >= artist_result_follower_max:
+            break
+        f_spotify_id = artist_result_follower_df.iloc[f_ind, 0]
+        f_spotify_name = artist_result_follower_df.iloc[f_ind, 1]
+
+        if f_count % 10 == 0:
+            logger.twitter_debug("Parsing {:}th artist for followings, {:}".format(f_count, f_spotify_name))
+
+        curr_time = time.time()
+        diff_delay = curr_time - last_following_time - 60
+        if diff_delay < 0:
+            time.sleep(-1*diff_delay + 0.1)
+
+        # 15 per 15 minute, 1 per minute, 1 per 60 seconds
+        print(spotify_to_twitter)
+        f_twitter_id = spotify_to_twitter.get(f_spotify_id)
+        if f_twitter_id is None:
+            print()
+            # TODO: QUERY DB TO GET TWITTER ID FOR AN ARTIST
+
+        if f_twitter_id is None:
+            f_count += 1
+            continue
+
+        if next_token is None:
+            next_token = ""
+        # twitter_id, next_token='' -> following_user_list, next_token, @write(twitter_user, following)
+        following_user_list, next_token = extract_twitter_following_info(f_twitter_id, next_token)
+        last_following_time = time.time()
+        if following_user_list == 429:
+            logger.twitter_warn("Rate limit exceeded for followers at {:}".format(f_count))
+        else:
+            # also accounts for other error case
+            if next_token == None or next_token == "":
+                f_count += 1
+            # print(f_spotify_id, f_spotify_name, f_twitter_id, following_user_list[:10])
+        
+        # logging/saving
+        # ever ~5 mins
+        if u_count % 100 == 0:
+           logger.twitter_debug("Exporting counts for safety at count of {:} and {:}".format(u_count, f_count))
             # TODO: at some point, periodically, call FileWrapper.writeValToFile(ARTIST_RESULT_FILE, count_rows_parsed+offset)
+            # and the other file
 
+        # every ~30 mins
+        if u_count % 600 == 0:
+            logger.twitter_debug("Exporting csvs for safety at count of {:} and {:}".format(u_count, f_count))
             # TODO: at some point, periodically, call /bin/bash /db/export.sh and then take the resulting exported csvs and email them using EmailWrapper (you will have to get the filepaths somehow)
-        # TODO: PROBS ADD A WAIT HERE FOR TIMEBOXING
+        # end of while loop
+    # end of func
 
 if __name__ == "__main__":
-    if len(sys.argv) <= 1 or sys.argv[1] != "":
-        logger.twitter_warn("Bad argument: ", sys.argv[1] if len(sys.argv) > 1 else "missing")
+    if len(sys.argv) <= 2 or sys.argv[1] == "" or sys.argv[2] == "":
+        logger.twitter_warn("Bad argument: ", sys.argv[1] if len(sys.argv) > 1 else "missing", sys.argv[2] if len(sys.argv) > 2 else "missing")
         sys.exit()
-    artist_result_offset = sys.argv[1]
-    if artist_result_offset < 0:
-        artist_result_offset = 0
-    elif artist_result_offset > 20000:
-        logger.twitter_info("Argument too large, skipping", artist_result_offset)
+    # used for getting twitter name and id
+    artist_twitter_offset = int(sys.argv[1])
+    if artist_twitter_offset < 0:
+        artist_twitter_offset = 0
+    elif artist_twitter_offset > 20000:
+        logger.twitter_info("Argument too large, skipping", artist_twitter_offset)
         sys.exit()
-    # TODO: ADD ONE MORE CHECK AGAINST THE TWITTER_USER TABLE TO AVOID REQUERYING INFO
-    
-    logger.twitter_info("Beginning twitter parsing with {:}".format(artist_result_offset))
-    extract_all(artist_result_offset)
-    # TODO: @JUSTIN @ANDREW
+
+    # used for getting twitter follower relationships
+    artist_following_offset = int(sys.argv[2])
+    if artist_following_offset < 0:
+        artist_following_offset = 0
+    elif artist_following_offset > 20000:
+        logger.twitter_info("Argument too large, skipping", artist_following_offset)
+        sys.exit()
+        
+    logger.twitter_info("Beginning twitter parsing with {:} and {:}".format(artist_twitter_offset, artist_following_offset))
+    extract_all(artist_twitter_offset, artist_following_offset)

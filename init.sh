@@ -8,11 +8,13 @@ echo "***Beginning setup of postgresql***"
 sleep 1
 echo "***Beginning analyzing artists***"
 
+export PYTHONPATH="${PYTHONPATH}:/code/"
+
 # Detect current values of ARTIST_RESULT_LINE, ARTIST_ID, MISSING_SONG_ATTRIBUTES, and TWITTER_USER_QUEUE
-ARTIST_RESULT_FILE=/data/script_counters/artist_result.txt
-ARTIST_ID_FILE=/data/script_counters/artist_id.txt
-MISSING_SONG_ATTRIBUTES_FILE=/data/script_counters/missing_song_attributes.txt
-TWITTER_USER_QUEUE_FILE=/data/script_counters/twitter_user_queue.txt
+ARTIST_RESULT_FILE=/data/script_counters/artist_result.txt # The line of artist_result.csv that has been scraped for twitter_id
+ARTIST_ID_FILE=/data/script_counters/artist_id.txt # The line of artist_result.csv that has been scraped for twitter followers
+MISSING_SONG_ATTRIBUTES_FILE=/data/script_counters/missing_song_attributes.txt # The line of missing_song_attributes.csv that has been scraped for song attribute data
+TWITTER_USER_QUEUE_FILE=/data/script_counters/twitter_user_queue.txt # The line of missing_song_attributes.csv that has been scraped for twitter user data
 
 if [[ -f "$ARTIST_RESULT_FILE" ]]; then
     ARTIST_RESULT_LINE=$(cat "$ARTIST_RESULT_FILE")
@@ -75,7 +77,7 @@ fi
 # TODO: CALL PYTHON FILE WITH FOR QUERYING SPOTIFY WITH $ARTIST_RESULT_LINE
 if [ $SKIP_ARTIST_RESULT -ne 1 ]; then
     echo "Beginning Spotify queries for artist_result"
-    python3 twitter/parse_spotify_artists.py $ARTIST_RESULT_LINE
+    python3 twitter/parse_spotify_artists.py $ARTIST_RESULT_LINE $ARTIST_ID
     # TODO: EVERY COUPLE HOURS OR SO IN THE SCRIPTS, EXPORT BY EXECUTING THE FOLLOWING:
     # /bin/bash db/export.sh
 else
