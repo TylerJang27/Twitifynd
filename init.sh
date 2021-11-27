@@ -18,6 +18,7 @@ TWITTER_USER_QUEUE_FILE=/data/script_counters/twitter_user_queue.txt # The line 
 
 SPOTIFY_MISSING_TWITTER_FILE=/data/script_data/spotify_missing_twitter_file.txt
 touch "${SPOTIFY_MISSING_TWITTER_FILE}"
+chmod +w "${SPOTIFY_MISSING_TWITTER_FILE}"
 
 if [[ -f "$ARTIST_RESULT_FILE" ]]; then
     ARTIST_RESULT_LINE=$(cat "$ARTIST_RESULT_FILE")

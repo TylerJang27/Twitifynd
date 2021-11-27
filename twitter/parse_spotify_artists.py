@@ -1,4 +1,5 @@
 from utils.utils import Config, EmailWrapper, FileWrapper, LoggerWrapper
+import utils.utils
 from sqlalchemy import create_engine, text, exc
 import sys
 import pandas as pd
@@ -9,6 +10,12 @@ from subprocess import call
 
 from unittest.mock import MagicMock
 import os
+
+ARTIST_RESULT_FILE = "/data/script_counters/artist_result.txt"
+ARTIST_ID_FILE = "/data/script_counters/artist_id.txt"
+MISSING_SONG_ATTRIBUTES_FILE = "/data/script_counters/missing_song_attributes.txt"
+TWITTER_USER_QUEUE_FILE = "/data/script_counters/twitter_user_queue.txt"
+SPOTIFY_MISSING_TWITTER_FILE = "/data/script_data/spotify_missing_twitter_file.txt"
 
 ARTIST_RESULT_CSV = "/code/prescraped/artist_result.csv"
 ARTIST_RESULT_CSV = "prescraped/artist_result.csv"
@@ -253,7 +260,8 @@ def extract_all(artist_result_offset=0, artist_following_offset=0):
             f_count += 1
             f_ind_follower_iter = 0
             next_token = None
-            FileWrapper.appendToFile(SPOTIFY_MISSING_TWITTER_FILE, "{:},{:}".format(spotify_id, spotify_name))
+            logger.twitter_info("Can't get follower info for nonexistent twitter id {:} {:}".format(f_spotify_id, f_spotify_name))
+            FileWrapper.appendToFile(SPOTIFY_MISSING_TWITTER_FILE, "{:},{:}".format(f_spotify_id, f_spotify_name))
             continue
 
         if next_token is None:
