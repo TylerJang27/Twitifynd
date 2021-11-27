@@ -16,6 +16,8 @@ ARTIST_ID_FILE = "/data/script_counters/artist_id.txt"
 MISSING_SONG_ATTRIBUTES_FILE = "/data/script_counters/missing_song_attributes.txt"
 TWITTER_USER_QUEUE_FILE = "/data/script_counters/twitter_user_queue.txt"
 SPOTIFY_MISSING_TWITTER_FILE = "/data/script_data/spotify_missing_twitter_file.txt"
+LOG_PATH = '/data/script_logs/'
+DATA_PATH = '/data/script_data/'
 
 ARTIST_RESULT_CSV = "/code/prescraped/artist_result.csv"
 ARTIST_RESULT_CSV = "prescraped/artist_result.csv"
