@@ -244,7 +244,7 @@ def extract_all(artist_result_offset=0, artist_following_offset=0):
                         WHERE :spotify_id = spotify_id
                         """).params(
                             spotify_id=f_spotify_id)).first()
-                    if(len(result) > 0):
+                    if (result is not None) and len(result) > 0:
                         f_twitter_id = result[0]
                         spotify_to_twitter[f_spotify_id] = f_twitter_id
             except exc.IntegrityError:
