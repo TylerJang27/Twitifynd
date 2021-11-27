@@ -49,6 +49,7 @@ def extract_twitter_id(spotify_id):
         twitter_id = r.text.split('{"name":"TWITTER","url":"https://twitter.com/')[1].split('"')[0].split('?')[0]
     except IndexError:
         logger.twitter_warn("User has not connected their Spotify to Twitter")
+        FileWrapper.appendToFile(SPOTIFY_MISSING_TWITTER_FILE, "{:}".format(spotify_id))
         return -1
 
     return twitter_id
@@ -295,7 +296,7 @@ def extract_all(artist_result_offset=0, artist_following_offset=0):
             FileWrapper.writeValToFile(ARTIST_ID_FILE, f_count+artist_following_offset)
 
         # every ~30 mins
-        if u_count % 100 == 0: # 600
+        if u_count % 600 == 0: # 600
             logger.twitter_debug("Exporting csvs for safety at count of {:} and {:}".format(u_count, f_count))
             rc = call("/code/db/export.sh")
             time.sleep(3)
