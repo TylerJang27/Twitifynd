@@ -295,7 +295,7 @@ def extract_all(artist_result_offset=0, artist_following_offset=0):
         # every ~30 mins
         if u_count % 100 == 0: # 600
             logger.twitter_debug("Exporting csvs for safety at count of {:} and {:}".format(u_count, f_count))
-            rc = call("/db/export.sh")
+            rc = call("/code/db/export.sh")
             time.sleep(3)
             file_names = ["twitter_user.csv", "following.csv", "spotify_artist.csv", "artist.csv"]
             for f in file_names:
@@ -308,7 +308,7 @@ def extract_all(artist_result_offset=0, artist_following_offset=0):
 if __name__ == "__main__":
     engine = create_engine(config.SQLALCHEMY_DATABASE_URI, execution_options={"isolation_level": "SERIALIZABLE"})
     if len(sys.argv) <= 2 or sys.argv[1] == "" or sys.argv[2] == "":
-        logger.twitter_warn("Bad argument: ", sys.argv[1] if len(sys.argv) > 1 else "missing", sys.argv[2] if len(sys.argv) > 2 else "missing")
+        logger.twitter_warn("Bad argument: {:} {:}".format(sys.argv[1] if len(sys.argv) > 1 else "missing", sys.argv[2] if len(sys.argv) > 2 else "missing"))
         sys.exit()
     # used for getting twitter name and id
     artist_twitter_offset = int(sys.argv[1])

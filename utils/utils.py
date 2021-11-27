@@ -125,7 +125,7 @@ class FileWrapper():
     @staticmethod
     def writeValToFile(filepath, contents):
         f = open(filepath, "w")
-        f.write(contents)
+        f.write(str(contents))
         f.close()
 
     @staticmethod
@@ -136,7 +136,7 @@ class FileWrapper():
     @staticmethod
     def appendToFile(filepath, contents):
         f = open(filepath, "a")
-        f.write(contents)
+        f.write(str(contents))
         f.close()
     
     @staticmethod
