@@ -5,12 +5,15 @@ import pandas as pd
 import requests
 import time
 import json
+from subprocess import call
 
 from unittest.mock import MagicMock
 import os
 
 ARTIST_RESULT_CSV = "/code/prescraped/artist_result.csv"
 ARTIST_RESULT_CSV = "prescraped/artist_result.csv"
+
+FOLLOWER_ITER_CAP = 5
 
 engine = None
 logger = LoggerWrapper()
@@ -60,7 +63,6 @@ def parse_twitter_user_and_write(data_obj):
     listed_count = public_metrics.get('listed_count')
 
     twitter_user_obj = [twitter_id, twitter_username, twitter_name, bio, verified, protected, followers_count, following_count, tweet_count, listed_count]
-    # TODO: WRITE twitter_user TO DATABASE
     try:
         with engine.connect() as conn:
             result = conn.execute(text("""
@@ -78,7 +80,7 @@ def parse_twitter_user_and_write(data_obj):
                         tweet_count=tweet_count, 
                         listed_count=listed_count))
     except exc.IntegrityError:
-        print("There was a duplicate twitter user")
+        logger.twitter_warn("There was a duplicate twitter user for {:} {:}".format(twitter_id, twitter_username))
 
     return twitter_user_obj
 
@@ -101,9 +103,6 @@ def extract_base_twitter_info(twitter_username, spotify_id):
     data_obj = json_data['data']
     parse_twitter_user_and_write(data_obj)
     twitter_id = int(data_obj.get('id'))
-    
-    # artist_obj = [id?, twitter_id, spotify_id]
-    # TODO: WRITE artist TO DATABASE (LINK SPOTIFY AND ARTIST NAME)
     try:
         with engine.connect() as conn:
             result = conn.execute(text("""
@@ -114,7 +113,7 @@ def extract_base_twitter_info(twitter_username, spotify_id):
                     twitter_id=twitter_id,
                     spotify_id=spotify_id))
     except exc.IntegrityError:
-        print("There was a duplicate artist")
+        logger.twitter_warn("There was a duplicate artist for twitter {:} and spotify {:}".format(twitter_id, spotify_id))
 
     return twitter_id
 
@@ -133,8 +132,7 @@ def extract_twitter_following_info(twitter_id, next_token=""):
         return followers_r.status_code, None
     
     if "errors" in followers_r:
-        print(followers_r['errors'])
-        logger.twitter_warn("Error twitter response for followers query: {:}".format(twitter_id))
+        logger.twitter_warn("Error twitter response for followers query: {:} {:}".format(twitter_id, followers_r['errors']))
         return -1, None
     
     json_data = json.loads(followers_r.text)
@@ -147,8 +145,6 @@ def extract_twitter_following_info(twitter_id, next_token=""):
         following_user_data = parse_twitter_user_and_write(following_user)
         following_user_list.append(following_user_data)
 
-        # TODO: WRITE following TO DATABASE (Link original artist to current user)
-        # following_obj = [twitter_id, following_user_data[0]]
         try:
             with engine.connect() as conn:
                 result = conn.execute(text("""
@@ -159,7 +155,7 @@ def extract_twitter_following_info(twitter_id, next_token=""):
                         follower_id=twitter_id,
                         followed_id=following_user_data[0]))
         except exc.IntegrityError:
-            print("There was a duplicate following directed pair")
+            logger.twitter_warn("There was a duplicate following directed pair {:} to {:}".format(twitter_id, following_user_data[0]))
     
     return following_user_list, next_token
 
@@ -173,18 +169,19 @@ def extract_all(artist_result_offset=0, artist_following_offset=0):
 
     u_count = 0
     f_count = 0
+    f_ind_follower_iter = 0
 
     last_user_time = 0.0
     last_following_time = 0.0
 
     next_token = ""
 
-    # while True:
-    for k in range(1):
+    while True:
+    # for k in range(1):
         # user queries
 
         # 300 per 15 minute, 20 per minute, 1 per 3 seconds
-        for k in range(5):
+        for k in range(20):
             # print(u_count)
             curr_time = time.time()
             diff_delay = curr_time - last_user_time - 3
@@ -237,11 +234,8 @@ def extract_all(artist_result_offset=0, artist_following_offset=0):
             time.sleep(-1*diff_delay + 0.1)
 
         # 15 per 15 minute, 1 per minute, 1 per 60 seconds
-        print(spotify_to_twitter)
-        f_twitter_id = None #spotify_to_twitter.get(f_spotify_id)
+        f_twitter_id = spotify_to_twitter.get(f_spotify_id)
         if f_twitter_id is None:
-            print()
-            # TODO: QUERY DB TO GET TWITTER ID FOR AN ARTIST
             try:
                 with engine.connect() as conn:
                     result = conn.execute(text("""
@@ -250,15 +244,16 @@ def extract_all(artist_result_offset=0, artist_following_offset=0):
                         WHERE :spotify_id = spotify_id
                         """).params(
                             spotify_id=f_spotify_id)).first()
-                    print(result)
                     if(len(result) > 0):
                         f_twitter_id = result[0]
+                        spotify_to_twitter[f_spotify_id] = f_twitter_id
             except exc.IntegrityError:
-                print("There was a duplicate following directed pair")
-            print(f_twitter_id)
-
+                logger.twitter_warn("There was an error retrieving twitter_id for spotify_id {:}", f_spotify_id)
         if f_twitter_id is None:
             f_count += 1
+            f_ind_follower_iter = 0
+            next_token = None
+            FileWrapper.appendToFile(SPOTIFY_MISSING_TWITTER_FILE, "{:},{:}".format(spotify_id, spotify_name))
             continue
 
         if next_token is None:
@@ -269,22 +264,34 @@ def extract_all(artist_result_offset=0, artist_following_offset=0):
         if following_user_list == 429:
             logger.twitter_warn("Rate limit exceeded for followers at {:}".format(f_count))
         else:
+            f_ind_follower_iter += 1
             # also accounts for other error case
             if next_token == None or next_token == "":
                 f_count += 1
+                f_ind_follower_iter = 0
+            elif f_ind_follower_iter >= FOLLOWER_ITER_CAP: # practical cap of followings reached
+                f_count += 1
+                f_ind_follower_iter = 0
+                next_token = None
             # print(f_spotify_id, f_spotify_name, f_twitter_id, following_user_list[:10])
         
         # logging/saving
         # ever ~5 mins
         if u_count % 100 == 0:
-           logger.twitter_debug("Exporting counts for safety at count of {:} and {:}".format(u_count, f_count))
-            # TODO: at some point, periodically, call FileWrapper.writeValToFile(ARTIST_RESULT_FILE, count_rows_parsed+offset)
-            # and the other file
+            logger.twitter_debug("Exporting counts for safety at count of {:} and {:}".format(u_count, f_count))
+            FileWrapper.writeValToFile(ARTIST_RESULT_FILE, u_count+artist_result_offset)
+            FileWrapper.writeValToFile(ARTIST_ID_FILE, f_count+artist_following_offset)
 
         # every ~30 mins
-        if u_count % 600 == 0:
+        if u_count % 100 == 0: # 600
             logger.twitter_debug("Exporting csvs for safety at count of {:} and {:}".format(u_count, f_count))
-            # TODO: at some point, periodically, call /bin/bash /db/export.sh and then take the resulting exported csvs and email them using EmailWrapper (you will have to get the filepaths somehow)
+            rc = call("/db/export.sh")
+            time.sleep(3)
+            file_names = ["twitter_user.csv", "following.csv", "spotify_artist.csv", "artist.csv"]
+            for f in file_names:
+                topdir = FileWrapper.getMostRecentDir(DATA_PATH)
+                curr_file_name = os.path.join(topdir, f)
+                EmailWrapper.sendEmail("{:}: Sending logged csv".format(time.time()), subject="Twitifynd Alert {:}".format(f), attachment=curr_file_name)
         # end of while loop
     # end of func
 

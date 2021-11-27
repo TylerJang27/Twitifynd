@@ -16,6 +16,9 @@ ARTIST_ID_FILE=/data/script_counters/artist_id.txt # The line of artist_result.c
 MISSING_SONG_ATTRIBUTES_FILE=/data/script_counters/missing_song_attributes.txt # The line of missing_song_attributes.csv that has been scraped for song attribute data
 TWITTER_USER_QUEUE_FILE=/data/script_counters/twitter_user_queue.txt # The line of missing_song_attributes.csv that has been scraped for twitter user data
 
+SPOTIFY_MISSING_TWITTER_FILE=/data/script_data/spotify_missing_twitter_file.txt
+touch "${SPOTIFY_MISSING_TWITTER_FILE}"
+
 if [[ -f "$ARTIST_RESULT_FILE" ]]; then
     ARTIST_RESULT_LINE=$(cat "$ARTIST_RESULT_FILE")
 else
