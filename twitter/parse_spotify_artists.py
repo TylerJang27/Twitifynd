@@ -148,6 +148,8 @@ def extract_twitter_following_info(twitter_id, next_token=""):
 
     data_obj = json_data.get('data')
     following_user_list = []
+    if data_obj is None:
+        return [], None
     for following_user in data_obj:
         following_user_data = parse_twitter_user_and_write(following_user)
         following_user_list.append(following_user_data)
