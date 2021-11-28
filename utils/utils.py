@@ -136,7 +136,7 @@ class FileWrapper():
     @staticmethod
     def appendToFile(filepath, contents):
         f = open(filepath, "a")
-        f.write(str(contents))
+        f.write(str(contents) + "\n")
         f.close()
     
     @staticmethod
