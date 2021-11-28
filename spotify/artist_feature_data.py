@@ -19,6 +19,7 @@ from twitter.parse_spotify_artists import extract_twitter_id, parse_twitter_user
 ARTIST_RESULT_FILE = utils.ARTIST_RESULT_FILE
 ARTIST_ID_FILE = utils.ARTIST_ID_FILE
 MISSING_SONG_ATTRIBUTES_FILE = utils.MISSING_SONG_ATTRIBUTES_FILE
+MISSING_SONG_FOLLOWERS_FILE = utils.MISSING_SONG_FOLLOWERS_FILE
 TWITTER_USER_QUEUE_FILE = utils.TWITTER_USER_QUEUE_FILE
 SPOTIFY_MISSING_TWITTER_FILE = utils.SPOTIFY_MISSING_TWITTER_FILE
 SPOTIFY_MISSING_TWITTER_FILE_2 = utils.SPOTIFY_MISSING_TWITTER_FILE_2
@@ -141,8 +142,8 @@ def get_artist_info(artist_id, spotify_name, genres, followers, popularity):
     #   acousticness, instrumentalness, liveness, valence, tempo, 
     #   duration_ms, time_signature, chorus_hit, sections, target
     # ]
-
-    num_attrs = len(tracks[0])
+    num_attrs = 16
+    # num_attrs = len(tracks[0])
     # print(tracks)
     # print([[t[attr_i] for t in tracks] for attr_i in range(num_attrs)])
     means = [avg([t[attr_i] for t in tracks]) for attr_i in range(num_attrs)]
@@ -197,9 +198,9 @@ def get_artist_info(artist_id, spotify_name, genres, followers, popularity):
     return artist_id
 
 # timebox and extract spotify and twitter information
-def extract_all(spotify_missing_offset=0):
+def extract_all(spotify_missing_offset=0, spotify_follower_offset=0):
     missing_artists_df = pd.read_csv(MISSING_ARTISTS_CSV, header=None, skiprows=spotify_missing_offset)
-    missing_artists_follower_df = pd.read_csv(MISSING_ARTISTS_CSV, header=None, skiprows=spotify_missing_offset)
+    missing_artists_follower_df = pd.read_csv(MISSING_ARTISTS_CSV, header=None, skiprows=spotify_follower_offset)
 
     missing_artists_max = missing_artists_df.index.stop
     missing_artists_follower_max = missing_artists_max
@@ -221,7 +222,7 @@ def extract_all(spotify_missing_offset=0):
         for k in range(20):
             # print(u_count)
 
-            u_ind = spotify_missing_offset + u_count
+            u_ind = u_count
             if u_ind >= missing_artists_max:
                 break
             u_spotify_id = missing_artists_df.iloc[u_ind, 0]
@@ -250,7 +251,7 @@ def extract_all(spotify_missing_offset=0):
 
             # twitter_username, spotify_id -> twitter_id, @write(twitter_user)
             u_twitter_id = extract_base_twitter_info(u_twitter_username, u_spotify_id, engine)
-            print(u_twitter_id, u_spotify_id, u_spotify_name)
+            # print(u_twitter_id, u_spotify_id, u_spotify_name)
             last_user_time = time.time()
             if u_twitter_id == 429:
                 logger.twitter_warn("Rate limit exceeded for users at {:}".format(u_count))
@@ -265,7 +266,7 @@ def extract_all(spotify_missing_offset=0):
             # print(u_spotify_id, u_spotify_name, u_twitter_id)
 
         # follower_queries
-        f_ind = spotify_missing_offset + f_count
+        f_ind = f_count
         if f_ind >= missing_artists_follower_max:
             break
         f_spotify_id = missing_artists_follower_df.iloc[f_ind, 0]
@@ -327,7 +328,7 @@ def extract_all(spotify_missing_offset=0):
         if u_count % 100 == 0:
             logger.twitter_debug("Exporting counts for safety at count of {:} and {:}".format(u_count, f_count))
             FileWrapper.writeValToFile(MISSING_SONG_ATTRIBUTES_FILE, u_count+spotify_missing_offset)
-            # FileWrapper.writeValToFile(ARTIST_ID_FILE, f_count+artist_following_offset)
+            FileWrapper.writeValToFile(MISSING_SONG_FOLLOWERS_FILE, f_count+spotify_follower_offset)
 
         # every ~30 mins
         if u_count % 600 == 0: # 600
@@ -344,8 +345,8 @@ def extract_all(spotify_missing_offset=0):
 
 if __name__ == "__main__":
     engine = create_engine(config.SQLALCHEMY_DATABASE_URI, execution_options={"isolation_level": "SERIALIZABLE"})
-    if len(sys.argv) <= 1 or sys.argv[1] == "":
-        logger.spotify_warn("Bad argument: {:}".format(sys.argv[1] if len(sys.argv) > 1 else "missing"))
+    if len(sys.argv) <= 2 or sys.argv[1] == "" or sys.argv[2] == "":
+        logger.spotify_warn("Bad argument: {:} {:}".format(sys.argv[1] if len(sys.argv) > 1 else "missing", sys.argv[2] if len(sys.argv) > 2 else "missing"))
         sys.exit()
     spotify_missing_artist = int(sys.argv[1])
     if spotify_missing_artist < 0:
@@ -353,8 +354,14 @@ if __name__ == "__main__":
     elif spotify_missing_artist > 400000:
         logger.spotify_info("Argument too large, skipping", spotify_missing_artist)
         sys.exit()
+    spotify_missing_followers = int(sys.argv[2])
+    if spotify_missing_followers < 0:
+        spotify_missing_followers = 0
+    elif spotify_missing_followers > 400000:
+        logger.spotify_info("Argument too large, skipping", spotify_missing_followers)
+        sys.exit()
 
-    logger.spotify_info("Beginning spotify parsing with {:}".format(spotify_missing_artist))
-    extract_all(spotify_missing_artist)
+    logger.spotify_info("Beginning spotify parsing with {:} {:}".format(spotify_missing_artist, spotify_missing_followers))
+    extract_all(spotify_missing_artist, spotify_missing_followers)
 
 

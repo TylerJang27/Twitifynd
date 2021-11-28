@@ -14,6 +14,7 @@ export PYTHONPATH="${PYTHONPATH}:/code/"
 ARTIST_RESULT_FILE=/data/script_counters/artist_result.txt # The line of artist_result.csv that has been scraped for twitter_id
 ARTIST_ID_FILE=/data/script_counters/artist_id.txt # The line of artist_result.csv that has been scraped for twitter followers
 MISSING_SONG_ATTRIBUTES_FILE=/data/script_counters/missing_song_attributes.txt # The line of missing_song_attributes.csv that has been scraped for song attribute data
+MISSING_SONG_FOLLOWERS_FILE=/data/script_counters/missing_song_followers.txt # The line of missing_song_followers.csv that has been scraped for follower data
 TWITTER_USER_QUEUE_FILE=/data/script_counters/twitter_user_queue.txt # The line of missing_song_attributes.csv that has been scraped for twitter user data
 
 SPOTIFY_MISSING_TWITTER_FILE=/data/script_data/spotify_missing_twitter_file.txt
@@ -48,6 +49,14 @@ else
     echo "-1" > ${MISSING_SONG_ATTRIBUTES_FILE}
 fi
 
+if [[ -f "$MISSING_SONG_FOLLOWERS_FILE" ]]; then
+    MISSING_SONG_FOLLOWERS=$(cat "$MISSING_SONG_FOLLOWERS_FILE")
+else
+    MISSING_SONG_FOLLOWERS=717
+    touch "${MISSING_SONG_FOLLOWERS_FILE}"
+    echo "717" > ${MISSING_SONG_FOLLOWERS_FILE}
+fi
+
 if [[ -f "$TWITTER_USER_QUEUE_FILE" ]]; then
     TWITTER_USER_QUEUE=$(cat "$TWITTER_USER_QUEUE_FILE")
 else
@@ -56,7 +65,7 @@ else
     echo "-1" > ${TWITTER_USER_QUEUE_FILE}
 fi
 
-echo $ARTIST_RESULT_LINE $ARTIST_ID $MISSING_SONG_ATTRIBUTES $TWITTER_USER_QUEUE
+echo $ARTIST_RESULT_LINE $ARTIST_ID $MISSING_SONG_ATTRIBUTES $MISSING_SONG_FOLLOWERS $TWITTER_USER_QUEUE
 
 # If alert level is at least 2, email a startup message
 if [ $ALERT_LEVEL -ge 2 ]; then
@@ -91,7 +100,7 @@ if [ $SKIP_ARTIST_RESULT -ne 1 ]; then
 else
     echo "Skipping Twitter queries for artist_result, parsing missing_artists.csv"
     # uses missing_artists.csv to fill in missing spotify artist info and 
-    python3 spotify/artist_feature_data.py $MISSING_SONG_ATTRIBUTES
+    python3 spotify/artist_feature_data.py $MISSING_SONG_ATTRIBUTES $MISSING_SONG_FOLLOWERS
 fi
 
 #   If ARTIST_RESULT_LINE > length of the file (~10,000)

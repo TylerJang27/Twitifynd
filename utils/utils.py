@@ -19,6 +19,7 @@ MAIL_SERVER_HOSTNAME = 'mail'
 ARTIST_RESULT_FILE = "/data/script_counters/artist_result.txt"
 ARTIST_ID_FILE = "/data/script_counters/artist_id.txt"
 MISSING_SONG_ATTRIBUTES_FILE = "/data/script_counters/missing_song_attributes.txt"
+MISSING_SONG_FOLLOWERS_FILE = "/data/script_counters/missing_song_followers.txt"
 TWITTER_USER_QUEUE_FILE = "/data/script_counters/twitter_user_queue.txt"
 SPOTIFY_MISSING_TWITTER_FILE = "/data/script_data/spotify_missing_twitter_file.txt"
 SPOTIFY_MISSING_TWITTER_FILE_2 = "/data/script_data/spotify_missing_twitter_file_2.txt"
