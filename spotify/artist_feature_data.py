@@ -84,6 +84,12 @@ def getTrackFeatures(id):
     duration_ms = meta['duration_ms']
     # popularity = meta['popularity']
 
+    if features[0] is None:
+        time.sleep(10)
+        features = sp.audio_features(id)
+        if features[0] is None:
+            return [None for k in range(16)]
+    
     # features
     acousticness = features[0]['acousticness']
     danceability = features[0]['danceability']
