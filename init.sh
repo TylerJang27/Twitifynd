@@ -20,6 +20,10 @@ SPOTIFY_MISSING_TWITTER_FILE=/data/script_data/spotify_missing_twitter_file.txt
 touch "${SPOTIFY_MISSING_TWITTER_FILE}"
 chmod +w "${SPOTIFY_MISSING_TWITTER_FILE}"
 
+SPOTIFY_MISSING_TWITTER_FILE_2=/data/script_data/spotify_missing_twitter_file_2.txt
+touch "${SPOTIFY_MISSING_TWITTER_FILE_2}"
+chmod +w "${SPOTIFY_MISSING_TWITTER_FILE_2}"
+
 if [[ -f "$ARTIST_RESULT_FILE" ]]; then
     ARTIST_RESULT_LINE=$(cat "$ARTIST_RESULT_FILE")
 else
@@ -80,12 +84,14 @@ fi
 #   f. Periodically update ARTIST_RESULT_LINE
 # TODO: CALL PYTHON FILE WITH FOR QUERYING SPOTIFY WITH $ARTIST_RESULT_LINE
 if [ $SKIP_ARTIST_RESULT -ne 1 ]; then
-    echo "Beginning Spotify queries for artist_result"
+    echo "Beginning Twitter queries for artist_result"
+    # uses artist_result.csv to convert spotify artists to twitter users and grab twitter information
+    # also begins parsing for follower data
     python3 twitter/parse_spotify_artists.py $ARTIST_RESULT_LINE $ARTIST_ID
-    # TODO: EVERY COUPLE HOURS OR SO IN THE SCRIPTS, EXPORT BY EXECUTING THE FOLLOWING:
-    # /bin/bash db/export.sh
 else
-    echo "Skipping Spotify queries for artist_result"
+    echo "Skipping Twitter queries for artist_result, parsing missing_artists.csv"
+    # uses missing_artists.csv to fill in missing spotify artist info and 
+    python3 spotify/artist_feature_data.py $MISSING_SONG_ATTRIBUTES
 fi
 
 #   If ARTIST_RESULT_LINE > length of the file (~10,000)

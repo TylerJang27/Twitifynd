@@ -1,5 +1,5 @@
 from utils.utils import Config, EmailWrapper, FileWrapper, LoggerWrapper
-import utils.utils
+import utils.utils as utils
 from sqlalchemy import create_engine, text, exc
 import sys
 import pandas as pd
@@ -11,23 +11,24 @@ from subprocess import call
 from unittest.mock import MagicMock
 import os
 
-ARTIST_RESULT_FILE = "/data/script_counters/artist_result.txt"
-ARTIST_ID_FILE = "/data/script_counters/artist_id.txt"
-MISSING_SONG_ATTRIBUTES_FILE = "/data/script_counters/missing_song_attributes.txt"
-TWITTER_USER_QUEUE_FILE = "/data/script_counters/twitter_user_queue.txt"
-SPOTIFY_MISSING_TWITTER_FILE = "/data/script_data/spotify_missing_twitter_file.txt"
-LOG_PATH = '/data/script_logs/'
-DATA_PATH = '/data/script_data/'
+ARTIST_RESULT_FILE = utils.ARTIST_RESULT_FILE
+ARTIST_ID_FILE = utils.ARTIST_ID_FILE
+MISSING_SONG_ATTRIBUTES_FILE = utils.MISSING_SONG_ATTRIBUTES_FILE
+TWITTER_USER_QUEUE_FILE = utils.TWITTER_USER_QUEUE_FILE
+SPOTIFY_MISSING_TWITTER_FILE = utils.SPOTIFY_MISSING_TWITTER_FILE
+LOG_PATH = utils.LOG_PATH
+DATA_PATH = utils.DATA_PATH
 
 ARTIST_RESULT_CSV = "/code/prescraped/artist_result.csv"
-ARTIST_RESULT_CSV = "prescraped/artist_result.csv"
+# ARTIST_RESULT_CSV = "prescraped/artist_result.csv"
 
 FOLLOWER_ITER_CAP = 5
 
-engine = None
+config = Config()
+# engine = None
+engine = create_engine(config.SQLALCHEMY_DATABASE_URI, execution_options={"isolation_level": "SERIALIZABLE"})
 logger = LoggerWrapper()
 # logger = MagicMock()
-config = Config()
 
 headers = {"Authorization": "Bearer {:}".format(config.TWITTER_BEARER)}
 # headers = {"Authorization": "Bearer {:}".format('')}
@@ -37,7 +38,7 @@ spotify_to_twitter = {}
 # SPOTIFY ENDPOINTS #
 #####################
 # Retrieve and return a twitter username given a spotify ID
-def extract_twitter_id(spotify_id):
+def extract_twitter_id(spotify_id, missing_file = SPOTIFY_MISSING_TWITTER_FILE):
     r = requests.get('https://open.spotify.com/artist/{:}'.format(spotify_id))
 
     if r.status_code != 200:
@@ -49,7 +50,7 @@ def extract_twitter_id(spotify_id):
         twitter_id = r.text.split('{"name":"TWITTER","url":"https://twitter.com/')[1].split('"')[0].split('?')[0]
     except IndexError:
         logger.twitter_warn("User has not connected their Spotify to Twitter")
-        FileWrapper.appendToFile(SPOTIFY_MISSING_TWITTER_FILE, "{:}".format(spotify_id))
+        FileWrapper.appendToFile(missing_file, "{:},,".format(spotify_id))
         return -1
 
     return twitter_id
@@ -59,7 +60,7 @@ def extract_twitter_id(spotify_id):
 #####################
 
 # Parses a dictionary of data about a Twitter user and write to db
-def parse_twitter_user_and_write(data_obj):
+def parse_twitter_user_and_write(data_obj, engine=engine):
     twitter_id = int(data_obj.get('id'))
     twitter_username = data_obj.get('username')
     twitter_name = data_obj.get('name')
@@ -96,7 +97,7 @@ def parse_twitter_user_and_write(data_obj):
 
 
 # Retrieve and return a twitter id and write to database for an artist
-def extract_base_twitter_info(twitter_username, spotify_id):
+def extract_base_twitter_info(twitter_username, spotify_id, engine=engine):
     # 300 calls per 15 minutes
     twitter_id_request_string = 'https://api.twitter.com/2/users/by/username/{:}?user.fields=id,name,verified,description,protected,public_metrics,location'
     user_id_r = requests.get(twitter_id_request_string.format(twitter_username), headers=headers)
@@ -128,7 +129,7 @@ def extract_base_twitter_info(twitter_username, spotify_id):
     return twitter_id
 
 # Retrieve and write a following list to database for an artist
-def extract_twitter_following_info(twitter_id, next_token=""):
+def extract_twitter_following_info(twitter_id, next_token="", engine=engine):
     # 15 calls per 15 minutes
     initial_followers_request_string = 'https://api.twitter.com/2/users/{:}/following?user.fields=id,name,username,verified,description,protected,public_metrics&max_results=1000'
     subsequent_followers_request_string = 'https://api.twitter.com/2/users/{:}/following?user.fields=id,name,username,verified,description,protected,public_metrics&max_results=1000&pagination_token={:}'
@@ -266,7 +267,7 @@ def extract_all(artist_result_offset=0, artist_following_offset=0):
             f_ind_follower_iter = 0
             next_token = None
             logger.twitter_info("Can't get follower info for nonexistent twitter id {:} {:}".format(f_spotify_id, f_spotify_name))
-            FileWrapper.appendToFile(SPOTIFY_MISSING_TWITTER_FILE, "{:},{:}".format(f_spotify_id, f_spotify_name))
+            FileWrapper.appendToFile(SPOTIFY_MISSING_TWITTER_FILE, "{:},{:},".format(f_spotify_id, f_spotify_name))
             continue
 
         if next_token is None:

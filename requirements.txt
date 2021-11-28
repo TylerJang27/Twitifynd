@@ -4,3 +4,4 @@ sqlalchemy
 requests
 mock
 psycopg2-binary
+spotipy

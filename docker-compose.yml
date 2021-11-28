@@ -24,7 +24,7 @@ services:
       TWITTER_BEARER: ${TWITTER_BEARER}
       RECEIVER_EMAIL: ${RECEIVER_EMAIL}
       ALERT_LEVEL: 1
-      SKIP_ARTIST_RESULT: 0
+      SKIP_ARTIST_RESULT: 1 # whether to use artist_result (0) or missing_artists (1)
       # ALERT_LEVEL: 1-minimal, warnings only; 2-startup and other events; 3-verbose
     volumes:
       - script_logs:/data/script_logs
