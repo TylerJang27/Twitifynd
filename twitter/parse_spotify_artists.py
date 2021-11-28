@@ -201,7 +201,7 @@ def extract_all(artist_result_offset=0, artist_following_offset=0):
             if diff_delay < 0:
                 time.sleep(-1*diff_delay + 0.1)
 
-            u_ind = artist_result_offset + u_count
+            u_ind = u_count
             if u_ind >= artist_result_max:
                 break
             u_spotify_id = artist_result_df.iloc[u_ind, 0]
@@ -232,7 +232,7 @@ def extract_all(artist_result_offset=0, artist_following_offset=0):
             # print(u_spotify_id, u_spotify_name, u_twitter_id)
 
         # follower_queries
-        f_ind = artist_following_offset + f_count
+        f_ind = f_count
         if f_ind >= artist_result_follower_max:
             break
         f_spotify_id = artist_result_follower_df.iloc[f_ind, 0]
@@ -297,7 +297,7 @@ def extract_all(artist_result_offset=0, artist_following_offset=0):
             FileWrapper.writeValToFile(ARTIST_ID_FILE, f_count+artist_following_offset)
 
         # every ~30 mins
-        if u_count % 600 == 0: # 600
+        if u_count % 300 == 0: # 600
             logger.twitter_debug("Exporting csvs for safety at count of {:} and {:}".format(u_count, f_count))
             rc = call("/code/db/export.sh")
             time.sleep(3)
