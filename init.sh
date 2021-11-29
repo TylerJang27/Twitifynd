@@ -1,4 +1,7 @@
 #!/bin/bash
+sleep 4
+echo "***Beginning setup of postgresql***"
+/bin/bash db/create.sh
 
 # If DB_PROCESS is 1 or 2, force an export or load and terminate
 if [ $DB_PROCESS -eq 1 ]; then
@@ -11,9 +14,6 @@ elif [ $DB_PROCESS -eq 2 ]; then
     exit 0
 fi
 
-sleep 4
-echo "***Beginning setup of postgresql***"
-/bin/bash db/create.sh
 # TODO: LOAD IN ANY PREVIOUS DATA AS APPLICABLE
 
 sleep 1
