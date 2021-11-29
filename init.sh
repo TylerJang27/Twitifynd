@@ -1,5 +1,16 @@
 #!/bin/bash
 
+# If DB_PROCESS is 1 or 2, force an export or load and terminate
+if [ $DB_PROCESS -eq 1 ]; then
+    echo "Forcing an export"
+    /bin/bash db/export.sh
+    exit 0
+elif [ $DB_PROCESS -eq 2 ]; then
+    echo "Forcing a load"
+    /bin/bash db/load_from_backup.sh
+    exit 0
+fi
+
 sleep 4
 echo "***Beginning setup of postgresql***"
 /bin/bash db/create.sh
