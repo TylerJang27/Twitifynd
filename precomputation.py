@@ -1,103 +1,179 @@
-import math
 import numpy as np
 import pandas as pd
+import math
 from sklearn.cluster import KMeans
 import json
 
-with open('prescraped/artist_result.csv') as c:
-    table = pd.read_csv(c, header=None)
-
-popular = table[table.iloc[:, 4] >= 65]
-candidates = table[table.iloc[:,4]<65]
-
-popular_ids = set()
-for pid in popular.iloc[:,0]:
-    popular_ids.add(pid)
-candidates_ids = set()
-for cid in candidates.iloc[:,0]:
-    candidates_ids.add(cid)
-
+# artists
+with open('log_2021-11-29_00_37_16/artist.csv') as a:
+    artists = pd.read_csv(a, header=None)
+# following
+with open('log_2021-11-29_00_37_16/following.csv') as f:
+    following = pd.read_csv(f, header=None)
+# spotify
+with open('log_2021-11-29_00_37_16/spotify_artist.csv') as s:
+    spotify = pd.read_csv(s, header=None)
 means_cols = []
-for i in range(5,table.shape[1],2):
+for i in range(5, spotify.shape[1], 2):
     means_cols.append(i)
+# twitter
+with open('log_2021-11-29_00_37_16/twitter_user.csv') as t:
+    twitter = pd.read_csv(t, header=None)
 
-artist_info = {}
-genres = set()
-for i, row in table.iterrows():
-    #both = np.array(row.iloc[5:])
-    means = []
-    for col in means_cols:
-        means.append(row.iloc[col])
-    artist_genres = []
-    for g in row.iloc[2].replace('[', '').replace(']','').replace("'", "").split(','):
-        genres.add(g.strip())
-        artist_genres.append(g.strip())
-    artist_info[row.iloc[0]] = {'name': row.iloc[1], 'followers': int(row.iloc[3]),
-                                'means': means, 'genres': artist_genres}
-    
+# check for nan and finite columns
+for col in means_cols:
+    col_nan = np.isnan(spotify.iloc[:, col]).values.any()
+    if col_nan is True:
+        print('Column {} has nan'.format(col))
+    col_inf = np.isinf(spotify.iloc[:, col]).values.any()
+    if col_inf is True:
+        print('Column {} has inf'.format(col))
+    col_large = (spotify.iloc[:, col] >= np.finfo('float64').max).any()
+    if col_large is True:
+        print('Column {} has large value'.format(col))
+print('done with checks')
 
-data_means = table.iloc[:,means_cols]
-#data_both = table.iloc[:,5:]
+# spotify info dictionary
+s_info = {}
+sids = set()
+tids = set()
+# spotify id key, add twitter id
+for i, row in artists.iterrows():
+    s_info[row[2]] = {'tid': row[1]}
+    sids.add(row[2])
+    tids.add(row[1])
+# spotify name, genres, means
+for i, row in spotify.iterrows():
+    sid = row[0]
+    if sid in s_info:
+        s_info[sid]['spotify name'] = row[1]
+        genres = []
+        for g in row.iloc[2].replace('[', '').replace(']', '').replace("'", "").split(','):
+            genres.append(g.strip())
+        s_info[sid]['genres'] = genres
+        means = []
+        for col in means_cols:
+            means.append(row.iloc[col])
+        s_info[sid]['means'] = means
+
+# twitter info dictionary
+t_info = {}
+# twitter id keys, add username, name, followers and following counts
+for i, row in twitter.iterrows():
+    t_info[row[0]] = {'username': row[1], 'name': row[2],
+    'followers count': row[5], 'following count': row[6],
+    'followers': [], 'following': []}
+# followers and following ids
+for i, row in following.iterrows():
+    t_info[row[0]]['following'].append(row[1])
+    t_info[row[1]]['followers'].append(row[0])
+# artists and followers count table
+df_artists_fcounts = pd.DataFrame(columns=['sid', 'tid', 'followers count'])
+for sid in s_info:
+    tid = s_info[sid]['tid']
+    df_artists_fcounts = df_artists_fcounts.append(
+        {'sid': sid, 'tid': tid, 'followers count': t_info[tid]['followers count']}, ignore_index=True)
+
+# Popular vs candidate threshold
+popular = df_artists_fcounts[df_artists_fcounts.iloc[:, 2] >= 500000]
+popular_sids = set([psid for psid in popular.iloc[:,0]])
+candidates = df_artists_fcounts[df_artists_fcounts.iloc[:, 2] < 500000]
+candidates_sids = set([csid for csid in candidates.iloc[:, 0]])
+# spotify means only, for clustering
+cols_id_means = [0] + means_cols
+spotify_means = spotify.iloc[:, cols_id_means]
+for i, row in spotify_means.iterrows():
+    if row[0] not in s_info:
+        spotify_means.drop(i, inplace=True)
+
+# clustering
 num_clust = math.floor(popular.shape[0]/2)
-
-means_clusters = KMeans(n_clusters=num_clust, init='k-means++').fit(data_means)
-
-
-for i, row in table.iterrows():
-    artist_info[row.iloc[0]]['cluster'] = means_clusters.labels_[i].item()
-
-df_artists_clusters = pd.DataFrame(columns=['id', 'cluster'])
-for artist in artist_info:
-    df_artists_clusters = df_artists_clusters.append({'id': artist, 'cluster': artist_info[artist]['cluster']}, ignore_index=True)
-
+clusters = KMeans(n_clusters=num_clust,
+                  init='k-means++').fit(spotify_means.drop(0, axis=1))
+# add cluster group info
+for i, row in spotify_means.iterrows():
+    s_info[row.iloc[0]]['cluster'] = clusters.labels_[i].item()
+# make sid and cluster group df
+df_artists_clusters = pd.DataFrame(columns=['sid', 'cluster'])
+for artist in s_info:
+    df_artists_clusters = df_artists_clusters.append(
+        {'id': artist, 'cluster': s_info[artist]['cluster']}, ignore_index=True)
+# group by cluster
 clusters_groups = df_artists_clusters.groupby(['cluster'])
-
+# make dictionary with:
+# popular artist key
+# candidate artists in same cluster
 popular_candidates = {}
-for pid in popular.iloc[:,0]:
-    popular_candidates[pid] = []
-
-for cluster in range(num_clust):
-    g = clusters_groups.get_group(cluster)
+for psid in popular_sids:
+    popular_candidates[psid] = []
+for clust in range(num_clust):
+    g = clusters_groups.get_group(clust)
     p = []
     c = []
-    for id in g.loc[:,'id']:
-        if id in popular_ids:
+    for id in g.loc[:, 'id']:
+        if id in popular_sids:
             p.append(id)
-        elif id in candidates_ids:
+        elif id in candidates_sids:
             c.append(id)
         else:
             print('neither')
-    for pid in p:
-        for cid in c:
-            popular_candidates[pid].append(cid)
-
+    for psid in p:
+        for csid in c:
+            popular_candidates[psid].append(csid)
+# calculate scores
 candidates_scores = {}
-for pid in popular_candidates:
-    candidates = popular_candidates[pid]
-    candidates_scores[pid] = []
-    for cid in candidates:
-        similarity = np.linalg.norm(np.array(artist_info[pid]['means']) - np.array(artist_info[cid]['means'])).item()
-        cf = artist_info[cid]['followers']
-        pf = artist_info[pid]['followers']
-        if cf==0:
+for psid in popular_candidates:
+    candidates = popular_candidates[psid]
+    candidates_scores[psid] = []
+    for csid in candidates:
+        similarity = np.linalg.norm(np.array(s_info[psid]['means']) - np.array(s_info[csid]['means'])).item()
+        cf = t_info[csid]['followers count']
+        pf = t_info[psid]['followers count']
+        if cf == 0:
             popularity = 0
         else:
             popularity = math.log(cf) / math.log(pf)
         novelty = 1 - popularity
         score = similarity*novelty
-        candidates_scores[pid].append(tuple((cid, score)))
+        candidates_scores[psid].append(tuple((csid, score)))
 
-name_find = {}
-for artist in artist_info:
-    name = artist_info[artist]['name']
-    if name in name_find:
-        name_find[name].append(artist)
+# spotify name find
+s_name_find = {}
+for sid in s_info:
+    name = s_info[sid]['spotify name']
+    if name in s_name_find:
+        s_name_find[name].append(sid)
     else:
-        name_find[name] = [artist]
+        s_name_find[name] = [sid]
+# twitter username find
+t_uname_find = {}
+for sid in s_info:
+    tid = s_info[sid]['tid']
+    uname = t_info[tid]['username']
+    if uname in t_uname_find:
+        t_uname_find[uname].append(sid)
+    else:
+        t_uname_find[uname] = [sid]
 
-with open('precomputed/name_find.json', 'w') as nf_file:
-    json.dump(name_find, nf_file)
-with open('precomputed/artist_info.json', 'w') as ai_file:
-    json.dump(artist_info, ai_file)
+# export dictionaries and scores as json files
+with open('precomputed/s_name_find.json', 'w') as snf_file:
+    json.dump(s_name_find, snf_file)
+with open('precomputed/t_uname_find.json', 'w') as tuf_file:
+    json.dump(t_uname_find, tuf_file)
+with open('precomputed/s_info.json', 'w') as si_file:
+    json.dump(s_info, si_file)
+with open('precomputed/t_info.json', 'w') as ti_file:
+    json.dump(t_info, ti_file)
 with open('precomputed/candidates_scores.json', 'w') as cs_file:
     json.dump(candidates_scores, cs_file)
+
+# Justin Bieber
+# twitter id
+jb_tid = twitter.iloc[0,0]
+# followers count
+jb_count = twitter.iloc[0,5]
+# manual count from following table
+jb_fcount = 0
+for i, row in following.iterrows():
+    if row[1] == jb_tid:
+        jb_fcount += 1
