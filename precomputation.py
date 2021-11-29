@@ -31,7 +31,8 @@ for col in means_cols:
     col_large = (spotify.iloc[:, col] >= np.finfo('float64').max).any()
     if col_large is True:
         print('Column {} has large value'.format(col))
-print('done with checks')
+#print('nan in spotify {}'.format(np.isnan(pd.DataFrame(np.nan_to_num(spotify.iloc[:, means_cols]))).values.any()))
+#print('done with checks')
 
 # spotify info dictionary
 s_info = {}
@@ -39,9 +40,9 @@ sids = set()
 tids = set()
 # spotify id key, add twitter id
 for i, row in artists.iterrows():
-    s_info[row[2]] = {'tid': row[1]}
+    s_info[row[2]] = {'tid': int(row[1])}
     sids.add(row[2])
-    tids.add(row[1])
+    tids.add(int(row[1]))
 # spotify name, genres, means
 for i, row in spotify.iterrows():
     sid = row[0]
@@ -60,13 +61,13 @@ for i, row in spotify.iterrows():
 t_info = {}
 # twitter id keys, add username, name, followers and following counts
 for i, row in twitter.iterrows():
-    t_info[row[0]] = {'username': row[1], 'name': row[2],
+    t_info[int(row[0])] = {'username': row[1], 'name': row[2],
     'followers count': row[5], 'following count': row[6],
     'followers': [], 'following': []}
 # followers and following ids
 for i, row in following.iterrows():
-    t_info[row[0]]['following'].append(row[1])
-    t_info[row[1]]['followers'].append(row[0])
+    t_info[int(row[0])]['following'].append(int(row[1]))
+    t_info[int(row[1])]['followers'].append(int(row[0]))
 # artists and followers count table
 df_artists_fcounts = pd.DataFrame(columns=['sid', 'tid', 'followers count'])
 for sid in s_info:
@@ -77,19 +78,22 @@ for sid in s_info:
 # Popular vs candidate threshold
 popular = df_artists_fcounts[df_artists_fcounts.iloc[:, 2] >= 500000]
 popular_sids = set([psid for psid in popular.iloc[:,0]])
+print('{} popular artists'.format(len(popular_sids)))
 candidates = df_artists_fcounts[df_artists_fcounts.iloc[:, 2] < 500000]
 candidates_sids = set([csid for csid in candidates.iloc[:, 0]])
+print('{} candidate artists'.format(len(candidates_sids)))
+
 # spotify means only, for clustering
 cols_id_means = [0] + means_cols
 spotify_means = spotify.iloc[:, cols_id_means]
 for i, row in spotify_means.iterrows():
     if row[0] not in s_info:
         spotify_means.drop(i, inplace=True)
-
+spotify_means.reset_index(drop=True, inplace=True)
+spotify_means_clust = pd.DataFrame(np.nan_to_num(spotify_means.drop(0, axis=1)))
 # clustering
 num_clust = math.floor(popular.shape[0]/2)
-clusters = KMeans(n_clusters=num_clust,
-                  init='k-means++').fit(spotify_means.drop(0, axis=1))
+clusters = KMeans(n_clusters=num_clust, init='k-means++').fit(spotify_means_clust)
 # add cluster group info
 for i, row in spotify_means.iterrows():
     s_info[row.iloc[0]]['cluster'] = clusters.labels_[i].item()
@@ -97,7 +101,7 @@ for i, row in spotify_means.iterrows():
 df_artists_clusters = pd.DataFrame(columns=['sid', 'cluster'])
 for artist in s_info:
     df_artists_clusters = df_artists_clusters.append(
-        {'id': artist, 'cluster': s_info[artist]['cluster']}, ignore_index=True)
+        {'sid': artist, 'cluster': s_info[artist]['cluster']}, ignore_index=True)
 # group by cluster
 clusters_groups = df_artists_clusters.groupby(['cluster'])
 # make dictionary with:
@@ -110,11 +114,11 @@ for clust in range(num_clust):
     g = clusters_groups.get_group(clust)
     p = []
     c = []
-    for id in g.loc[:, 'id']:
-        if id in popular_sids:
-            p.append(id)
-        elif id in candidates_sids:
-            c.append(id)
+    for sid in g.loc[:, 'sid']:
+        if sid in popular_sids:
+            p.append(sid)
+        elif sid in candidates_sids:
+            c.append(sid)
         else:
             print('neither')
     for psid in p:
@@ -126,9 +130,11 @@ for psid in popular_candidates:
     candidates = popular_candidates[psid]
     candidates_scores[psid] = []
     for csid in candidates:
-        similarity = np.linalg.norm(np.array(s_info[psid]['means']) - np.array(s_info[csid]['means'])).item()
-        cf = t_info[csid]['followers count']
-        pf = t_info[psid]['followers count']
+        similarity = np.linalg.norm(np.array(s_info[psid]['means']) - np.array(s_info[csid]['means'])).item()        
+        ctid = s_info[csid]['tid']
+        ptid = s_info[psid]['tid']
+        cf = t_info[ctid]['followers count']
+        pf = t_info[ptid]['followers count']
         if cf == 0:
             popularity = 0
         else:
