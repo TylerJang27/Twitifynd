@@ -15,9 +15,11 @@ if __name__ == "__main__":
     last_time = 0
 
     for ind in df.index:
+        if ind < 5000:
+            continue
         if (ind + 1) % 500 == 0:
             print("Saving to csv")
-            df.to_csv("missing_twitter_with_handles.csv", index = False, header = None)
+            df.to_csv("missing_twitter_with_handles2.csv", index = False, header = None)
         if ind % 25 == 0:
             print(ind)
         s = str(df.iloc[ind, 1]).strip().replace(" ", "").replace(".", "").replace("&", "").replace("-", "").lower()
@@ -47,4 +49,4 @@ if __name__ == "__main__":
         df.iloc[ind, 2] = json_data["data"]["username"]
         df.iloc[ind, 3] = json_data["data"]["id"]
 
-    df.to_csv("missing_twitter_with_handles.csv", index = False, header = None)
+    df.to_csv("missing_twitter_with_handles2.csv", index = False, header = None)
