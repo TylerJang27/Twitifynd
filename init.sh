@@ -28,11 +28,11 @@ MISSING_SONG_ATTRIBUTES_FILE=/data/script_counters/missing_song_attributes.txt #
 MISSING_SONG_FOLLOWERS_FILE=/data/script_counters/missing_song_followers.txt # The line of missing_song_followers.csv that has been scraped for follower data
 TWITTER_USER_QUEUE_FILE=/data/script_counters/twitter_user_queue.txt # The line of missing_song_attributes.csv that has been scraped for twitter user data
 
-SPOTIFY_MISSING_TWITTER_FILE=/data/script_data/spotify_missing_twitter_file.txt
+SPOTIFY_MISSING_TWITTER_FILE=/data/script_data/spotify_missing_twitter_file.csv
 touch "${SPOTIFY_MISSING_TWITTER_FILE}"
 chmod +w "${SPOTIFY_MISSING_TWITTER_FILE}"
 
-SPOTIFY_MISSING_TWITTER_FILE_2=/data/script_data/spotify_missing_twitter_file_2.txt
+SPOTIFY_MISSING_TWITTER_FILE_2=/data/script_data/spotify_missing_twitter_file_2.csv
 touch "${SPOTIFY_MISSING_TWITTER_FILE_2}"
 chmod +w "${SPOTIFY_MISSING_TWITTER_FILE_2}"
 
