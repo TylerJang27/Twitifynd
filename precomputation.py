@@ -14,8 +14,13 @@ with open('log_2021-11-29_05_34_18/following.csv') as f:
 with open('log_2021-11-29_05_34_18/spotify_artist.csv') as s:
     spotify = pd.read_csv(s, header=None)
 means_cols = []
-for i in range(5, spotify.shape[1], 2):
-    means_cols.append(i)
+# audio features up to duration
+for i in range(5, 27, 2):
+    # omit key
+    if i == 9:
+        pass
+    else:
+        means_cols.append(i)
 # twitter
 with open('log_2021-11-29_05_34_18/twitter_user.csv') as t:
     twitter = pd.read_csv(t, header=None)
@@ -94,7 +99,8 @@ for i, row in spotify_means.iterrows():
 spotify_means.reset_index(drop=True, inplace=True)
 spotify_means_clust = pd.DataFrame(np.nan_to_num(spotify_means.drop(0, axis=1)))
 # clustering
-num_clust = math.floor(popular.shape[0]/10)
+num_clust = math.floor(popular.shape[0]/16)
+print('{} clusters'.format(num_clust))
 clusters = KMeans(n_clusters=num_clust, init='k-means++').fit(spotify_means_clust)
 # add cluster group info
 for i, row in spotify_means.iterrows():
@@ -164,15 +170,15 @@ for sid in s_info:
         t_uname_find[uname] = [sid]
 
 # export dictionaries and scores as json files
-with open('precomputed/s_name_find.json', 'w') as snf_file:
+with open('precomp_diff_clusters/precomp_16/s_name_find.json', 'w') as snf_file:
     json.dump(s_name_find, snf_file)
-with open('precomputed/t_uname_find.json', 'w') as tuf_file:
+with open('precomp_diff_clusters/precomp_16/t_uname_find.json', 'w') as tuf_file:
     json.dump(t_uname_find, tuf_file)
-with open('precomputed/s_info.json', 'w') as si_file:
+with open('precomp_diff_clusters/precomp_16/s_info.json', 'w') as si_file:
     json.dump(s_info, si_file)
-with open('precomputed/t_info.json', 'w') as ti_file:
+with open('precomp_diff_clusters/precomp_16/t_info.json', 'w') as ti_file:
     json.dump(t_info, ti_file)
-with open('precomputed/candidates_scores.json', 'w') as cs_file:
+with open('precomp_diff_clusters/precomp_16/candidates_scores.json', 'w') as cs_file:
     json.dump(candidates_scores, cs_file)
 
 '''

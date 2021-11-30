@@ -4,12 +4,13 @@ import pandas as pd
 import numpy as np
 
 class Recommend:
-    def __init__(self):
-        with open('precomputed/s_info.json') as sif:
+    def __init__(self, artists_per_cluster):
+        folder = 'precomp_diff_clusters/precomp_' + str(artists_per_cluster)
+        with open(folder + '/s_info.json') as sif:
             self.s_info = json.load(sif)
-        with open('precomputed/t_info.json') as tif:
+        with open(folder + '/t_info.json') as tif:
             self.t_info = json.load(tif)
-        with open('precomputed/candidates_scores.json') as csf:
+        with open(folder + '/candidates_scores.json') as csf:
             self.candidates_scores = json.load(csf)
 
     def get_recs(self, artists):
@@ -21,7 +22,7 @@ class Recommend:
                 df_recs = df_recs.append({
                     'id': candidate[0],
                     'name': self.s_info[candidate[0]]['spotify name'],
-                    'score': round(np.nan_to_num(candidate[1]))}, ignore_index=True)
+                    'score': round(np.nan_to_num(candidate[1]), 3)}, ignore_index=True)
             df_recs.sort_values(by='score', ascending=False, inplace=True)
             df_recs.drop_duplicates(subset=['name'], inplace=True)
             df_recs.reset_index(drop=True, inplace=True)
