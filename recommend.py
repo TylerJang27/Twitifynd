@@ -1,3 +1,4 @@
+from io import DEFAULT_BUFFER_SIZE
 import json
 import pandas as pd
 import numpy as np
@@ -23,5 +24,14 @@ class Recommend:
                     'score': round(np.nan_to_num(candidate[1]))}, ignore_index=True)
             df_recs.sort_values(by='score', ascending=False, inplace=True)
             df_recs.drop_duplicates(subset=['name'], inplace=True)
-            all_recs[artist]['recs'] = df_recs.head()
+            df_recs.reset_index(drop=True, inplace=True)
+            remove = []
+            ptid = self.s_info[artist]['tid']
+            for i, row in df_recs.iterrows():
+                ctid = self.s_info[row[0]]['tid']
+                if ptid in self.t_info:
+                    if ctid in self.t_info[ptid]['following']:
+                        remove.append(i)
+            df_recs.drop(remove, inplace=True)
+            all_recs[artist]['recs'] = df_recs
         return all_recs
