@@ -21,8 +21,10 @@ ARTIST_ID_FILE = "/data/script_counters/artist_id.txt"
 MISSING_SONG_ATTRIBUTES_FILE = "/data/script_counters/missing_song_attributes.txt"
 MISSING_SONG_FOLLOWERS_FILE = "/data/script_counters/missing_song_followers.txt"
 TWITTER_USER_QUEUE_FILE = "/data/script_counters/twitter_user_queue.txt"
-SPOTIFY_MISSING_TWITTER_FILE = "/data/script_data/spotify_missing_twitter_file.txt"
-SPOTIFY_MISSING_TWITTER_FILE_2 = "/data/script_data/spotify_missing_twitter_file_2.txt"
+SPOTIFY_MISSING_TWITTER_FILE = "/data/script_data/spotify_missing_twitter_file.csv"
+SPOTIFY_MISSING_TWITTER_FILE_2 = "/data/script_data/spotify_missing_twitter_file_2.csv"
+SECOND_TIER_USER_FILE = "/data/script_counters/second_tier_user.txt"
+SECOND_TIER_FOLLOWERS_FILE = "/data/script_counters/second_tier_followers.txt"
 
 class Config(object):
     TWITTER_BEARER = os.environ.get('TWITTER_BEARER')

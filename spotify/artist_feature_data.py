@@ -163,7 +163,7 @@ def get_artist_info(artist_id, spotify_name, genres, followers, popularity):
                     RETURNING spotify_id
                     """).params(
                         spotify_id=artist_id,
-                        spotify_name=spotify_name,
+                        spotify_name=spotify_name[0:50],
                         genres=genres,
                         followers=float(followers),
                         popularity=int(popularity),

@@ -26,13 +26,15 @@ ARTIST_RESULT_FILE=/data/script_counters/artist_result.txt # The line of artist_
 ARTIST_ID_FILE=/data/script_counters/artist_id.txt # The line of artist_result.csv that has been scraped for twitter followers
 MISSING_SONG_ATTRIBUTES_FILE=/data/script_counters/missing_song_attributes.txt # The line of missing_song_attributes.csv that has been scraped for song attribute data
 MISSING_SONG_FOLLOWERS_FILE=/data/script_counters/missing_song_followers.txt # The line of missing_song_followers.csv that has been scraped for follower data
-TWITTER_USER_QUEUE_FILE=/data/script_counters/twitter_user_queue.txt # The line of missing_song_attributes.csv that has been scraped for twitter user data
+TWITTER_USER_QUEUE_FILE=/data/script_counters/twitter_user_queue.txt # Deprecated
+SECOND_TIER_USER_FILE=/data/script_counters/second_tier_user.txt # The line of missing_song_attributes.csv that has been scraped for twitter user data
+SECOND_TIER_FOLLOWERS_FILE=/data/script_counters/second_tier_followers.txt # The line of missing_song_attributes.csv that has been scraped for twitter follower data
 
-SPOTIFY_MISSING_TWITTER_FILE=/data/script_data/spotify_missing_twitter_file.txt
+SPOTIFY_MISSING_TWITTER_FILE=/data/script_data/spotify_missing_twitter_file.csv
 touch "${SPOTIFY_MISSING_TWITTER_FILE}"
 chmod +w "${SPOTIFY_MISSING_TWITTER_FILE}"
 
-SPOTIFY_MISSING_TWITTER_FILE_2=/data/script_data/spotify_missing_twitter_file_2.txt
+SPOTIFY_MISSING_TWITTER_FILE_2=/data/script_data/spotify_missing_twitter_file_2.csv
 touch "${SPOTIFY_MISSING_TWITTER_FILE_2}"
 chmod +w "${SPOTIFY_MISSING_TWITTER_FILE_2}"
 
@@ -76,7 +78,23 @@ else
     echo "-1" > ${TWITTER_USER_QUEUE_FILE}
 fi
 
-echo $ARTIST_RESULT_LINE $ARTIST_ID $MISSING_SONG_ATTRIBUTES $MISSING_SONG_FOLLOWERS $TWITTER_USER_QUEUE
+if [[ -f "$SECOND_TIER_USER_FILE" ]]; then
+    SECOND_TIER_USERS=$(cat "$SECOND_TIER_USER_FILE")
+else
+    SECOND_TIER_USERS=-1
+    touch "${SECOND_TIER_USER_FILE}"
+    echo "-1" > ${SECOND_TIER_USER_FILE}
+fi
+
+if [[ -f "$SECOND_TIER_FOLLOWERS_FILE" ]]; then
+    SECOND_TIER_FOLLOWERS=$(cat "$SECOND_TIER_FOLLOWERS_FILE")
+else
+    SECOND_TIER_FOLLOWERS=-1
+    touch "${SECOND_TIER_FOLLOWERS_FILE}"
+    echo "-1" > ${SECOND_TIER_FOLLOWERS_FILE}
+fi
+
+echo $ARTIST_RESULT_LINE $ARTIST_ID $MISSING_SONG_ATTRIBUTES $MISSING_SONG_FOLLOWERS $TWITTER_USER_QUEUE $SECOND_TIER_USERS $SECOND_TIER_FOLLOWERS
 
 # If alert level is at least 2, email a startup message
 if [ $ALERT_LEVEL -ge 2 ]; then
@@ -107,7 +125,13 @@ if [ $SKIP_ARTIST_RESULT -ne 1 ]; then
     echo "Beginning Twitter queries for artist_result"
     # uses artist_result.csv to convert spotify artists to twitter users and grab twitter information
     # also begins parsing for follower data
-    python3 twitter/parse_spotify_artists.py $ARTIST_RESULT_LINE $ARTIST_ID
+    if [ $USE_SECOND_TIER -eq 1 ]; then
+        # use missing
+        python3 twitter/parse_spotify_artists.py $USE_SECOND_TIER $SECOND_TIER_USERS $SECOND_TIER_FOLLOWERS
+    else
+        # use artist_result.csv
+        python3 twitter/parse_spotify_artists.py $USE_SECOND_TIER $ARTIST_RESULT_LINE $ARTIST_ID        
+    fi
 else
     echo "Skipping Twitter queries for artist_result, parsing missing_artists.csv"
     # uses missing_artists.csv to fill in missing spotify artist info and 
