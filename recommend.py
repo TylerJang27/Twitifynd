@@ -34,5 +34,5 @@ class Recommend:
                     if ctid in self.t_info[ptid]['following']:
                         remove.append(i)
             df_recs.drop(remove, inplace=True)
-            all_recs[artist]['recs'] = df_recs
+            all_recs[artist]['recs'] = df_recs.iloc[:, 1:]
         return all_recs
