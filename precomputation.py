@@ -5,19 +5,24 @@ from sklearn.cluster import KMeans
 import json
 
 # artists
-with open('log_2021-11-29_00_37_16/artist.csv') as a:
+with open('log_2021-11-29_05_34_18/artist.csv') as a:
     artists = pd.read_csv(a, header=None)
 # following
-with open('log_2021-11-29_00_37_16/following.csv') as f:
+with open('log_2021-11-29_05_34_18/following.csv') as f:
     following = pd.read_csv(f, header=None)
 # spotify
-with open('log_2021-11-29_00_37_16/spotify_artist.csv') as s:
+with open('log_2021-11-29_05_34_18/spotify_artist.csv') as s:
     spotify = pd.read_csv(s, header=None)
 means_cols = []
-for i in range(5, spotify.shape[1], 2):
-    means_cols.append(i)
+# audio features up to duration
+for i in range(5, 27, 2):
+    # omit key
+    if i == 9:
+        pass
+    else:
+        means_cols.append(i)
 # twitter
-with open('log_2021-11-29_00_37_16/twitter_user.csv') as t:
+with open('log_2021-11-29_05_34_18/twitter_user.csv') as t:
     twitter = pd.read_csv(t, header=None)
 
 # check for nan and finite columns
@@ -43,6 +48,8 @@ for i, row in artists.iterrows():
     s_info[row[2]] = {'tid': int(row[1])}
     sids.add(row[2])
     tids.add(int(row[1]))
+print('{} unique spotify ids'.format(len(sids)))
+print('{} unique twitter ids'.format(len(tids)))
 # spotify name, genres, means
 for i, row in spotify.iterrows():
     sid = row[0]
@@ -76,10 +83,10 @@ for sid in s_info:
         {'sid': sid, 'tid': tid, 'followers count': t_info[tid]['followers count']}, ignore_index=True)
 
 # Popular vs candidate threshold
-popular = df_artists_fcounts[df_artists_fcounts.iloc[:, 2] >= 500000]
+popular = df_artists_fcounts[df_artists_fcounts.iloc[:, 2] >= 100000]
 popular_sids = set([psid for psid in popular.iloc[:,0]])
 print('{} popular artists'.format(len(popular_sids)))
-candidates = df_artists_fcounts[df_artists_fcounts.iloc[:, 2] < 500000]
+candidates = df_artists_fcounts[df_artists_fcounts.iloc[:, 2] < 100000]
 candidates_sids = set([csid for csid in candidates.iloc[:, 0]])
 print('{} candidate artists'.format(len(candidates_sids)))
 
@@ -92,7 +99,8 @@ for i, row in spotify_means.iterrows():
 spotify_means.reset_index(drop=True, inplace=True)
 spotify_means_clust = pd.DataFrame(np.nan_to_num(spotify_means.drop(0, axis=1)))
 # clustering
-num_clust = math.floor(popular.shape[0]/2)
+num_clust = math.floor(popular.shape[0]/16)
+print('{} clusters'.format(num_clust))
 clusters = KMeans(n_clusters=num_clust, init='k-means++').fit(spotify_means_clust)
 # add cluster group info
 for i, row in spotify_means.iterrows():
@@ -162,17 +170,18 @@ for sid in s_info:
         t_uname_find[uname] = [sid]
 
 # export dictionaries and scores as json files
-with open('precomputed/s_name_find.json', 'w') as snf_file:
+with open('precomp_diff_clusters/precomp_16/s_name_find.json', 'w') as snf_file:
     json.dump(s_name_find, snf_file)
-with open('precomputed/t_uname_find.json', 'w') as tuf_file:
+with open('precomp_diff_clusters/precomp_16/t_uname_find.json', 'w') as tuf_file:
     json.dump(t_uname_find, tuf_file)
-with open('precomputed/s_info.json', 'w') as si_file:
+with open('precomp_diff_clusters/precomp_16/s_info.json', 'w') as si_file:
     json.dump(s_info, si_file)
-with open('precomputed/t_info.json', 'w') as ti_file:
+with open('precomp_diff_clusters/precomp_16/t_info.json', 'w') as ti_file:
     json.dump(t_info, ti_file)
-with open('precomputed/candidates_scores.json', 'w') as cs_file:
+with open('precomp_diff_clusters/precomp_16/candidates_scores.json', 'w') as cs_file:
     json.dump(candidates_scores, cs_file)
 
+'''
 # Justin Bieber
 # twitter id
 jb_tid = twitter.iloc[0,0]
@@ -183,3 +192,4 @@ jb_fcount = 0
 for i, row in following.iterrows():
     if row[1] == jb_tid:
         jb_fcount += 1
+'''
