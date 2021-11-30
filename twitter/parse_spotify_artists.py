@@ -16,11 +16,14 @@ ARTIST_ID_FILE = utils.ARTIST_ID_FILE
 MISSING_SONG_ATTRIBUTES_FILE = utils.MISSING_SONG_ATTRIBUTES_FILE
 TWITTER_USER_QUEUE_FILE = utils.TWITTER_USER_QUEUE_FILE
 SPOTIFY_MISSING_TWITTER_FILE = utils.SPOTIFY_MISSING_TWITTER_FILE
+SECOND_TIER_USER_FILE = utils.SECOND_TIER_USER_FILE
+SECOND_TIER_FOLLOWERS_FILE = utils.SECOND_TIER_FOLLOWERS_FILE
 LOG_PATH = utils.LOG_PATH
 DATA_PATH = utils.DATA_PATH
 
 ARTIST_RESULT_CSV = "/code/prescraped/artist_result.csv"
 # ARTIST_RESULT_CSV = "prescraped/artist_result.csv"
+SECOND_TIER_CSV = "/code/prescraped/missing_twitter_with_handles.csv"
 
 FOLLOWER_ITER_CAP = 5
 
@@ -196,6 +199,11 @@ def extract_all(artist_result_offset=0, artist_following_offset=0):
         # 300 per 15 minute, 20 per minute, 1 per 3 seconds
         for k in range(20):
             # print(u_count)
+            # ever ~5 mins
+            if u_count % 100 == 0:
+                logger.twitter_debug("Exporting counts for safety at count of {:} and {:}".format(u_count, f_count))
+                FileWrapper.writeValToFile(ARTIST_RESULT_FILE, u_count+artist_result_offset)
+                FileWrapper.writeValToFile(ARTIST_ID_FILE, f_count+artist_following_offset)
             curr_time = time.time()
             diff_delay = curr_time - last_user_time - 3
             if diff_delay < 0:
@@ -290,12 +298,150 @@ def extract_all(artist_result_offset=0, artist_following_offset=0):
             # print(f_spotify_id, f_spotify_name, f_twitter_id, following_user_list[:10])
         
         # logging/saving
-        # ever ~5 mins
-        if u_count % 100 == 0:
-            logger.twitter_debug("Exporting counts for safety at count of {:} and {:}".format(u_count, f_count))
-            FileWrapper.writeValToFile(ARTIST_RESULT_FILE, u_count+artist_result_offset)
-            FileWrapper.writeValToFile(ARTIST_ID_FILE, f_count+artist_following_offset)
+        # every ~30 mins
+        if u_count % 300 == 0: # 600
+            logger.twitter_debug("Exporting csvs for safety at count of {:} and {:}".format(u_count, f_count))
+            rc = call("/code/db/export.sh")
+            time.sleep(3)
+            file_names = ["twitter_user.csv", "following.csv", "spotify_artist.csv", "artist.csv"]
+            for f in file_names:
+                topdir = FileWrapper.getMostRecentDir(DATA_PATH)
+                curr_file_name = os.path.join(topdir, f)
+                EmailWrapper.sendEmail("{:}: Sending logged csv".format(time.time()), subject="Twitifynd Alert {:}".format(f), attachment=curr_file_name)
+        # end of while loop
+    # end of func
 
+# timebox and extract twitter information
+def extract_second_tier(artist_result_offset=0, artist_following_offset=0):
+    artist_result_df = pd.read_csv(SECOND_TIER_CSV, header=None, skiprows=artist_result_offset)
+    artist_result_follower_df = pd.read_csv(SECOND_TIER_CSV, header=None, skiprows=artist_following_offset)
+
+    artist_result_max = artist_result_df.index.stop
+    artist_result_follower_max = artist_result_max
+
+    u_count = 0
+    f_count = 0
+    f_ind_follower_iter = 0
+
+    last_user_time = 0.0
+    last_following_time = 0.0
+
+    next_token = ""
+
+    while True:
+    # for k in range(1):
+        # user queries
+
+        # 300 per 15 minute, 20 per minute, 1 per 3 seconds
+        for k in range(20):
+            # print(u_count)
+            # ever ~5 mins
+            if u_count % 100 == 0:
+                logger.twitter_debug("Exporting counts for safety at count of {:} and {:}".format(u_count, f_count))
+                FileWrapper.writeValToFile(SECOND_TIER_USER_FILE, u_count+artist_result_offset)
+                FileWrapper.writeValToFile(SECOND_TIER_FOLLOWERS_FILE, f_count+artist_following_offset)
+
+            curr_time = time.time()
+            diff_delay = curr_time - last_user_time - 3
+            if diff_delay < 0:
+                time.sleep(-1*diff_delay + 0.1)
+
+            u_ind = u_count
+            if u_ind >= artist_result_max:
+                break
+            u_spotify_id = artist_result_df.iloc[u_ind, 0]
+            u_spotify_name = artist_result_df.iloc[u_ind, 1]
+            u_twitter_username = artist_result_df.iloc[u_ind, 2]
+            u_twitter_id = artist_result_df.iloc[u_ind, 3]
+
+            if u_count % 10 == 0:
+                logger.twitter_debug("Parsing {:}th artist of CSV, {:}".format(u_count, u_spotify_name))
+
+            if u_twitter_username == "":
+                u_count += 1
+                continue
+
+            # twitter_username, spotify_id -> twitter_id, @write(twitter_user)
+            u_twitter_id = extract_base_twitter_info(u_twitter_username, u_spotify_id)
+            last_user_time = time.time()
+            if u_twitter_id == 429:
+                logger.twitter_warn("Rate limit exceeded for users at {:}".format(u_count))
+                continue
+            if u_twitter_id == -1:
+                u_count += 1
+                continue
+            
+            # add to dictionary for easier follower queries
+            spotify_to_twitter[u_spotify_id] = u_twitter_id
+            u_count += 1
+            print(u_spotify_id, u_spotify_name, u_twitter_id)
+
+        # follower_queries
+        f_ind = f_count
+        if f_ind >= artist_result_follower_max:
+            break
+        f_spotify_id = artist_result_follower_df.iloc[f_ind, 0]
+        f_spotify_name = artist_result_follower_df.iloc[f_ind, 1]
+        f_twitter_username = artist_result_follower_df.iloc[u_ind, 2]
+        f_twitter_id = artist_result_follower_df.iloc[u_ind, 3]
+        
+        if f_count % 10 == 0:
+            logger.twitter_debug("Parsing {:}th artist for followings, {:}".format(f_count, f_spotify_name))
+        
+        if f_twitter_username == "":
+            f_count += 1
+            f_ind_follower_iter = 0
+            next_token = None
+            continue
+
+        curr_time = time.time()
+        diff_delay = curr_time - last_following_time - 60
+        if diff_delay < 0:
+            time.sleep(-1*diff_delay + 0.1)
+
+        # 15 per 15 minute, 1 per minute, 1 per 60 seconds
+        f_twitter_id = spotify_to_twitter.get(f_spotify_id)
+        if f_twitter_id is None:
+            try:
+                with engine.connect() as conn:
+                    result = conn.execute(text("""
+                        SELECT twitter_id
+                        FROM artist
+                        WHERE :spotify_id = spotify_id
+                        """).params(
+                            spotify_id=f_spotify_id)).first()
+                    if (result is not None) and len(result) > 0:
+                        f_twitter_id = result[0]
+                        spotify_to_twitter[f_spotify_id] = f_twitter_id
+            except exc.IntegrityError:
+                logger.twitter_warn("There was an error retrieving twitter_id for spotify_id {:}", f_spotify_id)
+        if f_twitter_id is None:
+            f_count += 1
+            f_ind_follower_iter = 0
+            next_token = None
+            logger.twitter_info("Can't get follower info for nonexistent twitter id {:} {:}".format(f_spotify_id, f_spotify_name))
+            continue
+
+        if next_token is None:
+            next_token = ""
+        # twitter_id, next_token='' -> following_user_list, next_token, @write(twitter_user, following)
+        following_user_list, next_token = extract_twitter_following_info(f_twitter_id, next_token)
+        last_following_time = time.time()
+        if following_user_list == 429:
+            logger.twitter_warn("Rate limit exceeded for followers at {:}".format(f_count))
+        else:
+            f_ind_follower_iter += 1
+            # also accounts for other error case
+            if next_token == None or next_token == "":
+                f_count += 1
+                f_ind_follower_iter = 0
+            elif f_ind_follower_iter >= FOLLOWER_ITER_CAP: # practical cap of followings reached
+                f_count += 1
+                f_ind_follower_iter = 0
+                next_token = None
+            # print(f_spotify_id, f_spotify_name, f_twitter_id, following_user_list[:10])
+        
+        # logging/saving
         # every ~30 mins
         if u_count % 300 == 0: # 600
             logger.twitter_debug("Exporting csvs for safety at count of {:} and {:}".format(u_count, f_count))
@@ -311,11 +457,13 @@ def extract_all(artist_result_offset=0, artist_following_offset=0):
 
 if __name__ == "__main__":
     engine = create_engine(config.SQLALCHEMY_DATABASE_URI, execution_options={"isolation_level": "SERIALIZABLE"})
-    if len(sys.argv) <= 2 or sys.argv[1] == "" or sys.argv[2] == "":
-        logger.twitter_warn("Bad argument: {:} {:}".format(sys.argv[1] if len(sys.argv) > 1 else "missing", sys.argv[2] if len(sys.argv) > 2 else "missing"))
+    if len(sys.argv) <= 3 or sys.argv[1] == "" or sys.argv[2] == "" or sys.argv[3] == "":
+        logger.twitter_warn("Bad argument: {:} {:}".format(sys.argv[1] if len(sys.argv) > 1 else "missing", sys.argv[2] if len(sys.argv) > 2 else "missing", sys.argv[3] if len(sys.argv) > 3 else "missing"))
         sys.exit()
+    use_second_tier = int(sys.argv[1])
+    
     # used for getting twitter name and id
-    artist_twitter_offset = int(sys.argv[1])
+    artist_twitter_offset = int(sys.argv[2])
     if artist_twitter_offset < 0:
         artist_twitter_offset = 0
     elif artist_twitter_offset > 20000:
@@ -323,12 +471,16 @@ if __name__ == "__main__":
         sys.exit()
 
     # used for getting twitter follower relationships
-    artist_following_offset = int(sys.argv[2])
+    artist_following_offset = int(sys.argv[3])
     if artist_following_offset < 0:
         artist_following_offset = 0
     elif artist_following_offset > 20000:
         logger.twitter_info("Argument too large, skipping", artist_following_offset)
         sys.exit()
         
-    logger.twitter_info("Beginning twitter parsing with {:} and {:}".format(artist_twitter_offset, artist_following_offset))
-    extract_all(artist_twitter_offset, artist_following_offset)
+    if use_second_tier == 1:
+        logger.twitter_info("Beginning second tier twitter parsing with {:} and {:}".format(artist_twitter_offset, artist_following_offset))
+        extract_second_tier(artist_twitter_offset, artist_following_offset)
+    else:
+        logger.twitter_info("Beginning twitter parsing with {:} and {:}".format(artist_twitter_offset, artist_following_offset))
+        extract_all(artist_twitter_offset, artist_following_offset)
