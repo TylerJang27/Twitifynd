@@ -58,8 +58,11 @@ CREATE TABLE spotify_artist(
 );
 CREATE TABLE artist (
     id SERIAL,
-    twitter_id bigint NULL, /* I was thinking we may have spotify or twitter users without being linked to start with, so it may be useful to keep this structure */
-    spotify_id char(22) NULL,
+    twitter_id bigint NULL UNIQUE, /* I was thinking we may have spotify or twitter users without being linked to start with, so it may be useful to keep this structure */
+    spotify_id char(22) NULL UNIQUE,
     FOREIGN KEY (twitter_id) REFERENCES twitter_user(twitter_id),
     FOREIGN KEY (spotify_id) REFERENCES spotify_artist(spotify_id)
 );
+CREATE VIEW artist_names AS SELECT a.id AS id, a.twitter_id as tw_id, a.spotify_id as sp_id, b.twitter_username as username, b.twitter_name as tw_name, c.spotify_name as sp_name FROM artist AS a, twitter_user AS b, spotify_artist AS c WHERE a.twitter_id = b.twitter_id AND a.spotify_id = c.spotify_id;
+CREATE VIEW artist_detail AS SELECT a.id AS id, a.twitter_id as tw_id, a.spotify_id as sp_id, c.spotify_name as sp_name, c.genres, c.followers, c.popularity, c.mean_danceability as dance, c.mean_energy as energy, c.mean_loudness as loudness, c.mean_mode as mode, c.mean_speechiness as speechiness, c.mean_acousticness as acousticness, c.mean_instrumentalness as instrumentalness, c.mean_liveness as liveness, c.mean_valence as valence, c.mean_tempo as tempo FROM artist AS a, spotify_artist AS c WHERE a.spotify_id = c.spotify_id;
+CREATE VIEW artist_twitter AS SELECT a.id AS id, a.twitter_id as tw_id, a.spotify_id as sp_id, b.twitter_username as username, b.twitter_name as tw_name, b.verified as verified, b.protected as protected, b.followers_count as followers, b.following_count as following FROM artist AS a, twitter_user AS b, spotify_artist AS c WHERE a.twitter_id = b.twitter_id;
