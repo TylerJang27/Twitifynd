@@ -353,6 +353,9 @@ def extract_second_tier(artist_result_offset=0, artist_following_offset=0):
             u_spotify_name = artist_result_df.iloc[u_ind, 1]
             u_twitter_username = artist_result_df.iloc[u_ind, 2]
             u_twitter_id = artist_result_df.iloc[u_ind, 3]
+            if u_twitter_id == "" or u_twitter_id == None or pd.isnull(u_twitter_id):
+                u_count += 1
+                continue
 
             if u_count % 10 == 0:
                 logger.twitter_debug("Parsing {:}th artist of CSV, {:}".format(u_count, u_spotify_name))

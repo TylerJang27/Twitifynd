@@ -9,13 +9,13 @@ import os
 headers = {"Authorization": "Bearer {:}".format('')}
 
 if __name__ == "__main__":
-    df = pd.read_csv("missing_twitter_fixed.csv", header=None)
+    df = pd.read_csv("missing_twitter_with_handles2.csv", header=None)
 
     df.insert(3, "twitter_id", ['' for k in df.index], True)
     last_time = 0
 
     for ind in df.index:
-        if ind < 5000:
+        if ind < 1000:
             continue
         if (ind + 1) % 500 == 0:
             print("Saving to csv")
