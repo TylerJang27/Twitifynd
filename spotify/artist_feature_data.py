@@ -251,6 +251,8 @@ def extract_all(spotify_missing_offset=0, spotify_follower_offset=0):
 
             # spotify_id -> twitter_username
             u_twitter_username = extract_twitter_id(u_spotify_id, SPOTIFY_MISSING_TWITTER_FILE_2)
+            if u_twitter_username is None or u_twitter_username == -1:
+                u_twitter_username = u_spotify_name.strip().replace(" ", "").replace(",", "").replace("&", "")
             if u_twitter_username == -1:
                 u_count += 1
                 continue

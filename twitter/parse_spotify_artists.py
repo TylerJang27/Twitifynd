@@ -220,6 +220,8 @@ def extract_all(artist_result_offset=0, artist_following_offset=0):
 
             # spotify_id -> twitter_username
             u_twitter_username = extract_twitter_id(u_spotify_id)
+            if u_twitter_username is None or u_twitter_username == -1:
+                u_twitter_username = u_spotify_name.strip().replace(" ", "").replace(",", "").replace("&", "")
             if u_twitter_username == -1:
                 u_count += 1
                 continue
@@ -353,7 +355,7 @@ def extract_second_tier(artist_result_offset=0, artist_following_offset=0):
             u_spotify_name = artist_result_df.iloc[u_ind, 1]
             u_twitter_username = artist_result_df.iloc[u_ind, 2]
             u_twitter_id = artist_result_df.iloc[u_ind, 3]
-            if u_twitter_id == "" or u_twitter_id == None or pd.isnull(u_twitter_id):
+            if not (u_twitter_id == "" or u_twitter_id == None or pd.isnull(u_twitter_id)):
                 u_count += 1
                 continue
 
