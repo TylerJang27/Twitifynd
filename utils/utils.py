@@ -19,14 +19,18 @@ MAIL_SERVER_HOSTNAME = 'mail'
 ARTIST_RESULT_FILE = "/data/script_counters/artist_result.txt"
 ARTIST_ID_FILE = "/data/script_counters/artist_id.txt"
 MISSING_SONG_ATTRIBUTES_FILE = "/data/script_counters/missing_song_attributes.txt"
+MISSING_SONG_FOLLOWERS_FILE = "/data/script_counters/missing_song_followers.txt"
 TWITTER_USER_QUEUE_FILE = "/data/script_counters/twitter_user_queue.txt"
-
+SPOTIFY_MISSING_TWITTER_FILE = "/data/script_data/spotify_missing_twitter_file.csv"
+SPOTIFY_MISSING_TWITTER_FILE_2 = "/data/script_data/spotify_missing_twitter_file_2.csv"
+SECOND_TIER_USER_FILE = "/data/script_counters/second_tier_user.txt"
+SECOND_TIER_FOLLOWERS_FILE = "/data/script_counters/second_tier_followers.txt"
 
 class Config(object):
     TWITTER_BEARER = os.environ.get('TWITTER_BEARER')
     SPOTIFY_ID = os.environ.get('SPOTIFY_ID')
     SPOTIFY_SECRET = os.environ.get('SPOTIFY_SECRET')
-    SQLALCHEMY_DATABASE_URI = 'postgresql://{}:{}@localhost/{}'\
+    SQLALCHEMY_DATABASE_URI = 'postgresql://{}:{}@db/{}'\
         .format(os.environ.get('POSTGRES_USER'),
                 os.environ.get('PGPASSWORD'),
                 os.environ.get('POSTGRES_DB'))
@@ -125,13 +129,32 @@ class FileWrapper():
     @staticmethod
     def writeValToFile(filepath, contents):
         f = open(filepath, "w")
-        f.write(contents)
+        f.write(str(contents))
         f.close()
 
     @staticmethod
     def readFromFile(filepath):
         f = open(filepath, "r")
         return f.read()
+    
+    @staticmethod
+    def appendToFile(filepath, contents):
+        f = open(filepath, "a")
+        f.write(str(contents) + "\n")
+        f.close()
+    
+    @staticmethod
+    def getMostRecentDir(filepath):
+        max_mtime = 0
+        max_subdr = ""
+        for dirname,subdirs,files in os.walk(filepath):
+            for subdir in subdirs:
+                if "log_" in subdir:
+                    full_path = os.path.join(dirname, subdir)
+                    mtime = os.stat(full_path).st_mtime
+                    if mtime > max_mtime:
+                        max_subdr = full_path
+        return max_subdr
 
 
 if __name__ == "__main__":

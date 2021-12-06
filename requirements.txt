@@ -1,1 +1,7 @@
 # Python standard packages
+pandas
+sqlalchemy
+requests
+mock
+psycopg2-binary
+spotipy
