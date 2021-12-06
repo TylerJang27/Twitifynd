@@ -4,14 +4,16 @@ import math
 from sklearn.cluster import KMeans
 import json
 
+LOG_DIR = 'log_2021-11-29_05_34_18/'
+
 # artists
-with open('log_2021-11-29_05_34_18/artist.csv') as a:
+with open(LOG_DIR + 'artist.csv') as a:
     artists = pd.read_csv(a, header=None)
 # following
-with open('log_2021-11-29_05_34_18/following.csv') as f:
+with open(LOG_DIR + 'following.csv') as f:
     following = pd.read_csv(f, header=None)
 # spotify
-with open('log_2021-11-29_05_34_18/spotify_artist.csv') as s:
+with open(LOG_DIR + 'spotify_artist.csv') as s:
     spotify = pd.read_csv(s, header=None)
 means_cols = []
 # audio features up to duration
@@ -22,7 +24,7 @@ for i in range(5, 27, 2):
     else:
         means_cols.append(i)
 # twitter
-with open('log_2021-11-29_05_34_18/twitter_user.csv') as t:
+with open(LOG_DIR + 'twitter_user.csv') as t:
     twitter = pd.read_csv(t, header=None)
 
 # check for nan and finite columns
