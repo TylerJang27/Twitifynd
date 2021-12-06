@@ -22,7 +22,8 @@ class Recommend:
                 df_recs = df_recs.append({
                     'id': candidate[0],
                     'name': self.s_info[candidate[0]]['spotify name'],
-                    'score': round(np.nan_to_num(candidate[1]), 3)}, ignore_index=True)
+                    'score': round(np.nan_to_num(candidate[1]), 3),
+                    'link': "https://open.spotify.com/artist/" + candidate[0]}, ignore_index=True)
             df_recs.sort_values(by='score', ascending=False, inplace=True)
             df_recs.drop_duplicates(subset=['name'], inplace=True)
             df_recs.reset_index(drop=True, inplace=True)

@@ -4,7 +4,9 @@ import math
 from sklearn.cluster import KMeans
 import json
 
-LOG_DIR = 'log_2021-11-29_05_34_18/'
+LOG_DIR = 'log_2021-12-06_04:51:47/'
+NUM_PER_CLUSTER_LIST = [1, 2, 4, 8, 16]
+SCORE_WEIGHT = 3
 
 # artists
 with open(LOG_DIR + 'artist.csv') as a:
@@ -92,96 +94,103 @@ candidates = df_artists_fcounts[df_artists_fcounts.iloc[:, 2] < 100000]
 candidates_sids = set([csid for csid in candidates.iloc[:, 0]])
 print('{} candidate artists'.format(len(candidates_sids)))
 
-# spotify means only, for clustering
-cols_id_means = [0] + means_cols
-spotify_means = spotify.iloc[:, cols_id_means]
-for i, row in spotify_means.iterrows():
-    if row[0] not in s_info:
-        spotify_means.drop(i, inplace=True)
-spotify_means.reset_index(drop=True, inplace=True)
-spotify_means_clust = pd.DataFrame(np.nan_to_num(spotify_means.drop(0, axis=1)))
-# clustering
-num_clust = math.floor(popular.shape[0]/16)
-print('{} clusters'.format(num_clust))
-clusters = KMeans(n_clusters=num_clust, init='k-means++').fit(spotify_means_clust)
-# add cluster group info
-for i, row in spotify_means.iterrows():
-    s_info[row.iloc[0]]['cluster'] = clusters.labels_[i].item()
-# make sid and cluster group df
-df_artists_clusters = pd.DataFrame(columns=['sid', 'cluster'])
-for artist in s_info:
-    df_artists_clusters = df_artists_clusters.append(
-        {'sid': artist, 'cluster': s_info[artist]['cluster']}, ignore_index=True)
-# group by cluster
-clusters_groups = df_artists_clusters.groupby(['cluster'])
-# make dictionary with:
-# popular artist key
-# candidate artists in same cluster
-popular_candidates = {}
-for psid in popular_sids:
-    popular_candidates[psid] = []
-for clust in range(num_clust):
-    g = clusters_groups.get_group(clust)
-    p = []
-    c = []
-    for sid in g.loc[:, 'sid']:
-        if sid in popular_sids:
-            p.append(sid)
-        elif sid in candidates_sids:
-            c.append(sid)
-        else:
-            print('neither')
-    for psid in p:
-        for csid in c:
-            popular_candidates[psid].append(csid)
-# calculate scores
-candidates_scores = {}
-for psid in popular_candidates:
-    candidates = popular_candidates[psid]
-    candidates_scores[psid] = []
-    for csid in candidates:
-        similarity = np.linalg.norm(np.array(s_info[psid]['means']) - np.array(s_info[csid]['means'])).item()        
-        ctid = s_info[csid]['tid']
-        ptid = s_info[psid]['tid']
-        cf = t_info[ctid]['followers count']
-        pf = t_info[ptid]['followers count']
-        if cf == 0:
-            popularity = 0
-        else:
-            popularity = math.log(cf) / math.log(pf)
-        novelty = 1 - popularity
-        score = similarity*novelty
-        candidates_scores[psid].append(tuple((csid, score)))
+for num_per_cluster in NUM_PER_CLUSTER_LIST:
+    print("Running for {:} artists per clusters".format(num_per_cluster))
+    # spotify means only, for clustering
+    cols_id_means = [0] + means_cols
+    spotify_means = spotify.iloc[:, cols_id_means]
+    for i, row in spotify_means.iterrows():
+        if row[0] not in s_info:
+            spotify_means.drop(i, inplace=True)
+    spotify_means.reset_index(drop=True, inplace=True)
+    spotify_means_clust = pd.DataFrame(np.nan_to_num(spotify_means.drop(0, axis=1)))
+    # clustering
+    num_clust = math.floor(popular.shape[0]/num_per_cluster)
+    print('{} clusters'.format(num_clust))
+    clusters = KMeans(n_clusters=num_clust, init='k-means++').fit(spotify_means_clust)
+    # add cluster group info
+    for i, row in spotify_means.iterrows():
+        s_info[row.iloc[0]]['cluster'] = clusters.labels_[i].item()
+    # make sid and cluster group df
+    df_artists_clusters = pd.DataFrame(columns=['sid', 'cluster'])
+    for artist in s_info:
+        df_artists_clusters = df_artists_clusters.append(
+            {'sid': artist, 'cluster': s_info[artist]['cluster']}, ignore_index=True)
+    # group by cluster
+    clusters_groups = df_artists_clusters.groupby(['cluster'])
+    # make dictionary with:
+    # popular artist key
+    # candidate artists in same cluster
+    popular_candidates = {}
+    for psid in popular_sids:
+        popular_candidates[psid] = []
+    for clust in range(num_clust):
+        g = clusters_groups.get_group(clust)
+        p = []
+        c = []
+        for sid in g.loc[:, 'sid']:
+            if sid in popular_sids:
+                p.append(sid)
+            elif sid in candidates_sids:
+                c.append(sid)
+            else:
+                print('neither')
+        for psid in p:
+            for csid in c:
+                popular_candidates[psid].append(csid)
+    # calculate scores
+    candidates_scores = {}
+    min_similarity = 90000000
+    max_similarity = -5
+    for psid in popular_candidates:
+        candidates = popular_candidates[psid]
+        candidates_scores[psid] = []
+        for csid in candidates:
+            similarity = np.linalg.norm(np.array(s_info[psid]['means']) - np.array(s_info[csid]['means'])).item()        
+            ctid = s_info[csid]['tid']
+            ptid = s_info[psid]['tid']
+            cf = t_info[ctid]['followers count']
+            pf = t_info[ptid]['followers count']
+            if cf == 0:
+                popularity = 0
+            else:
+                popularity = math.log(cf) / math.log(pf)
+            novelty = 1 - popularity
+            score = (similarity ** SCORE_WEIGHT)*(novelty)
+            min_similarity = min(min_similarity, similarity)
+            max_similarity = max(max_similarity, similarity)
+            candidates_scores[psid].append(tuple((csid, score)))
+    print(min_similarity, max_similarity)
 
-# spotify name find
-s_name_find = {}
-for sid in s_info:
-    name = s_info[sid]['spotify name']
-    if name in s_name_find:
-        s_name_find[name].append(sid)
-    else:
-        s_name_find[name] = [sid]
-# twitter username find
-t_uname_find = {}
-for sid in s_info:
-    tid = s_info[sid]['tid']
-    uname = t_info[tid]['username']
-    if uname in t_uname_find:
-        t_uname_find[uname].append(sid)
-    else:
-        t_uname_find[uname] = [sid]
+    # spotify name find
+    s_name_find = {}
+    for sid in s_info:
+        name = s_info[sid]['spotify name']
+        if name in s_name_find:
+            s_name_find[name].append(sid)
+        else:
+            s_name_find[name] = [sid]
+    # twitter username find
+    t_uname_find = {}
+    for sid in s_info:
+        tid = s_info[sid]['tid']
+        uname = t_info[tid]['username']
+        if uname in t_uname_find:
+            t_uname_find[uname].append(sid)
+        else:
+            t_uname_find[uname] = [sid]
 
-# export dictionaries and scores as json files
-with open('precomp_diff_clusters/precomp_16/s_name_find.json', 'w') as snf_file:
-    json.dump(s_name_find, snf_file)
-with open('precomp_diff_clusters/precomp_16/t_uname_find.json', 'w') as tuf_file:
-    json.dump(t_uname_find, tuf_file)
-with open('precomp_diff_clusters/precomp_16/s_info.json', 'w') as si_file:
-    json.dump(s_info, si_file)
-with open('precomp_diff_clusters/precomp_16/t_info.json', 'w') as ti_file:
-    json.dump(t_info, ti_file)
-with open('precomp_diff_clusters/precomp_16/candidates_scores.json', 'w') as cs_file:
-    json.dump(candidates_scores, cs_file)
+    # export dictionaries and scores as json files
+    with open('precomp_diff_clusters/precomp_{:}/s_name_find.json'.format(num_per_cluster), 'w') as snf_file:
+        json.dump(s_name_find, snf_file)
+    with open('precomp_diff_clusters/precomp_{:}/t_uname_find.json'.format(num_per_cluster), 'w') as tuf_file:
+        json.dump(t_uname_find, tuf_file)
+    with open('precomp_diff_clusters/precomp_{:}/s_info.json'.format(num_per_cluster), 'w') as si_file:
+        json.dump(s_info, si_file)
+    with open('precomp_diff_clusters/precomp_{:}/t_info.json'.format(num_per_cluster), 'w') as ti_file:
+        json.dump(t_info, ti_file)
+    with open('precomp_diff_clusters/precomp_{:}/candidates_scores.json'.format(num_per_cluster), 'w') as cs_file:
+        json.dump(candidates_scores, cs_file)
 
 '''
 # Justin Bieber
