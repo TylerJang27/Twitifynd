@@ -4,7 +4,7 @@ import math
 from sklearn.cluster import KMeans
 import json
 
-LOG_DIR = 'log_2021-12-06_04:51:47/'
+LOG_DIR = 'log_2021-12-06_04_51_47/'
 NUM_PER_CLUSTER_LIST = [1, 2, 4, 8, 16]
 SCORE_WEIGHT = 3
 
@@ -155,8 +155,7 @@ for num_per_cluster in NUM_PER_CLUSTER_LIST:
                 popularity = 0
             else:
                 popularity = math.log(cf) / math.log(pf)
-            novelty = 1 - popularity
-            score = (similarity ** SCORE_WEIGHT)*(novelty)
+            score = (similarity ** SCORE_WEIGHT)*(popularity)
             min_similarity = min(min_similarity, similarity)
             max_similarity = max(max_similarity, similarity)
             candidates_scores[psid].append(tuple((csid, score)))
